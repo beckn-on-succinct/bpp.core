@@ -18,6 +18,7 @@ public class BppActionTask extends BppTask {
 
     public BppActionTask(CommerceAdaptor adaptor, Request request, Map<String, String> headers){
         super(request,headers);
+        this.adaptor = adaptor;
         this.setSubscriber(adaptor.getSubscriber());
     }
 

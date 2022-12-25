@@ -3,10 +3,10 @@ package in.succinct.bpp.core.registry;
 import com.venky.core.security.Crypt;
 import com.venky.core.util.ObjectUtil;
 import com.venky.swf.db.annotations.column.ui.mimes.MimeType;
+import com.venky.swf.db.model.CryptoKey;
 import com.venky.swf.integration.api.Call;
 import com.venky.swf.integration.api.HttpMethod;
 import com.venky.swf.integration.api.InputFormat;
-import com.venky.swf.db.model.CryptoKey;
 import com.venky.swf.routing.Config;
 import in.succinct.beckn.BecknObject;
 import in.succinct.beckn.Request;
@@ -27,7 +27,7 @@ import java.util.Objects;
 public class BecknRegistry {
     final String url ;
     final String schema;
-    protected BecknRegistry(String url,String schema){
+    public BecknRegistry(String url,String schema){
         this.url = url;
         this.schema = schema;
     }
