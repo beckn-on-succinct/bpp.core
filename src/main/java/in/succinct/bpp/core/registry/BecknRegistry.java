@@ -55,7 +55,7 @@ public class BecknRegistry {
     }
 
     public void subscribe(Subscriber subscriber) {
-        if (lookup(subscriber.getSubscriberId()).isEmpty()){
+        if (lookup(subscriber.getSubscriberId(),false).isEmpty()){
             if (isSelfRegistrationSupported()) {
                 register(subscriber);
             }
@@ -73,13 +73,13 @@ public class BecknRegistry {
         Config.instance().getLogger(BecknRegistry.class.getName()).info("subscribe" + "-" + response.toString());
     }
 
-    public List<Subscriber> lookup(String subscriberId) {
+    public List<Subscriber> lookup(String subscriberId, boolean onlyIfSubscribed) {
         Subscriber subscriber = new Subscriber();
         subscriber.setSubscriberId(subscriberId);
-        return lookup(subscriber);
+        return lookup(subscriber,onlyIfSubscribed);
     }
 
-    public List<Subscriber> lookup(Subscriber subscriber) {
+    public List<Subscriber> lookup(Subscriber subscriber,boolean onlyIfSubscribed) {
         List<Subscriber> subscribers = new ArrayList<>();
 
         JSONArray responses = new Call<JSONObject>().method(HttpMethod.POST).url(getUrl(), "lookup").input(subscriber.getInner()).inputFormat(InputFormat.JSON)
@@ -92,7 +92,7 @@ public class BecknRegistry {
         for (Iterator<?> i = responses.iterator(); i.hasNext(); ) {
             JSONObject object1 = (JSONObject) i.next();
             Subscriber subscriber1 = new Subscriber(object1);
-            if (!ObjectUtil.equals(subscriber1.getStatus(), "SUBSCRIBED")) {
+            if (onlyIfSubscribed && !ObjectUtil.equals(subscriber1.getStatus(), "SUBSCRIBED")) {
                 i.remove();
             } else {
                 subscribers.add(subscriber1);

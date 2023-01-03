@@ -1,6 +1,7 @@
 package in.succinct.bpp.core.adaptor;
 
 import com.venky.core.util.ObjectUtil;
+import com.venky.extension.Registry;
 import com.venky.swf.plugins.background.core.TaskManager;
 import com.venky.swf.plugins.beckn.messaging.Subscriber;
 import com.venky.swf.routing.Config;
@@ -40,6 +41,9 @@ public abstract class CommerceAdaptor {
             createReplyContext(request,response);
             Method method = getClass().getMethod(request.getContext().getAction(), Request.class, Request.class);
             method.invoke(this, request, response);
+            Registry.instance().callExtensions(
+                    String.format("%s.%s.network.extension",CommerceAdaptor.class.getPackageName(),request.getContext().getAction()),
+                    this,request,response);
             log("ToApplication",request,headers,response,"/" + request.getContext().getAction());
             response.getContext().setBppId(getSubscriber().getSubscriberId());
             response.getContext().setBppUri(getSubscriber().getSubscriberUrl());
