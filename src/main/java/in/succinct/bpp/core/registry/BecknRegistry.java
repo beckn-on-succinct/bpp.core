@@ -1,7 +1,9 @@
 package in.succinct.bpp.core.registry;
 
 import com.venky.core.security.Crypt;
+import com.venky.core.util.ObjectHolder;
 import com.venky.core.util.ObjectUtil;
+import com.venky.extension.Registry;
 import com.venky.swf.db.annotations.column.ui.mimes.MimeType;
 import com.venky.swf.db.model.CryptoKey;
 import com.venky.swf.integration.api.Call;
@@ -11,9 +13,12 @@ import com.venky.swf.routing.Config;
 import in.succinct.beckn.BecknObject;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.Subscriber;
+import in.succinct.bpp.core.adaptor.CommerceAdaptor;
+import in.succinct.bpp.core.adaptor.NetworkAdaptor;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.time.Duration;
@@ -27,10 +32,33 @@ import java.util.Objects;
 public class BecknRegistry {
     final String url ;
     final String schema;
+    final String registryAlias ;
     public BecknRegistry(String url,String schema){
         this.url = url;
         this.schema = schema;
+
+        try {
+            this.registryAlias = new URL(url).getHost();
+        }catch (Exception ex){
+            throw new RuntimeException(ex);
+        }
+
     }
+
+    NetworkAdaptor adaptor = null;
+    public NetworkAdaptor getNetworkAdaptor(){
+        if (adaptor == null) {
+            ObjectHolder<NetworkAdaptor> commerceAdaptorHolder = new ObjectHolder<>(null);
+            Registry.instance().callExtensions(NetworkAdaptor.class.getName(), this, commerceAdaptorHolder);
+            adaptor =  commerceAdaptorHolder.get();
+        }
+        return adaptor;
+    }
+
+    public String getRegistryAlias() {
+        return registryAlias;
+    }
+
     public String getUrl(){
         return url;
     }
