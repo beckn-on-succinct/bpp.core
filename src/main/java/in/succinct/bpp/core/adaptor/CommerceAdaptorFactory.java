@@ -3,7 +3,7 @@ package in.succinct.bpp.core.adaptor;
 import com.venky.core.util.ObjectHolder;
 import com.venky.extension.Registry;
 import com.venky.swf.plugins.beckn.messaging.Subscriber;
-import in.succinct.bpp.core.registry.BecknRegistry;
+
 
 import java.util.Map;
 
@@ -33,10 +33,10 @@ public class CommerceAdaptorFactory {
         return getInstance();
     }
 
-    public CommerceAdaptor createAdaptor(Map<String,String> properties, Subscriber subscriber, BecknRegistry registry){
+    public CommerceAdaptor createAdaptor(Map<String,String> properties, Subscriber subscriber){
         try {
             ObjectHolder<CommerceAdaptor> commerceAdaptorHolder = new ObjectHolder<>(null);
-            Registry.instance().callExtensions(CommerceAdaptor.class.getName(),properties,subscriber,registry,commerceAdaptorHolder);
+            Registry.instance().callExtensions(CommerceAdaptor.class.getName(),properties,subscriber,commerceAdaptorHolder);
             return commerceAdaptorHolder.get();
         } catch (Exception e) {
             throw new RuntimeException(e);

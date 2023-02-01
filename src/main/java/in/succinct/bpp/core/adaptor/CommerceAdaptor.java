@@ -1,118 +1,98 @@
 package in.succinct.bpp.core.adaptor;
 
-import com.venky.core.util.ObjectUtil;
-import com.venky.swf.plugins.background.core.TaskManager;
+import com.venky.swf.db.model.application.Application;
+import com.venky.swf.db.model.application.ApplicationUtil;
 import com.venky.swf.plugins.beckn.messaging.Subscriber;
-import com.venky.swf.routing.Config;
-import in.succinct.beckn.BecknAware;
-import in.succinct.beckn.Context;
+import in.succinct.beckn.Descriptor;
+import in.succinct.beckn.Items;
+import in.succinct.beckn.Locations;
+import in.succinct.beckn.Order;
+import in.succinct.beckn.Payment;
+import in.succinct.beckn.Payment.CollectedBy;
+import in.succinct.beckn.Payment.PaymentType;
+import in.succinct.beckn.Payments;
+import in.succinct.beckn.Provider;
 import in.succinct.beckn.Request;
-import in.succinct.bpp.core.registry.BecknRegistry;
-import in.succinct.bpp.core.tasks.BppActionTask;
-import org.json.simple.JSONObject;
 
-import java.lang.reflect.Method;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Level;
 
 public abstract class CommerceAdaptor {
     private final Subscriber subscriber;
-    private final BecknRegistry registry;
+    private final Map<String,String> configuration;
+    private final Application application ;
 
-    public CommerceAdaptor(Subscriber subscriber, BecknRegistry registry) {
+    public CommerceAdaptor(Map<String,String> configuration, Subscriber subscriber) {
+        this.configuration = configuration;
         this.subscriber = subscriber;
-        this.registry = registry;
+        this.application = ApplicationUtil.find(getSubscriber().getAppId());;
+    }
+    public Application getApplication(){
+        return application;
     }
 
-    public BecknRegistry getRegistry() {
-        return registry;
+    public Map<String, String> getConfiguration() {
+        return configuration;
     }
 
     public Subscriber getSubscriber() {
         return subscriber;
     }
 
-    public void call(Map<String,String> headers, Request request, Request response){
-        JSONObject h = new JSONObject();h.putAll(headers);
-        request.getExtendedAttributes().set("headers",h);
-        try {
-            createReplyContext(request,response);
-            Method method = getClass().getMethod(request.getContext().getAction(), Request.class, Request.class);
-            method.invoke(this, request, response);
-            log("ToApplication",request,headers,response,"/" + request.getContext().getAction());
-            response.getContext().setBppId(getSubscriber().getSubscriberId());
-            response.getContext().setBppUri(getSubscriber().getSubscriberUrl());
-        }catch (Exception ex){
-            throw new RuntimeException(ex);
+
+    public abstract Locations getProviderLocations();
+    public abstract Items getItems();
+    public abstract boolean isTaxIncludedInPrice() ;
+    public abstract Order initializeDraftOrder(Request request) ;
+    public abstract Order confirmDraftOrder(Order draftOrder) ;
+    public abstract Order getStatus(Order order);
+    public abstract Order cancel(Order order) ;
+
+
+
+    public abstract String getTrackingUrl(Order order) ;
+    public abstract  String getSupportEmail() ;
+
+    public String getProviderDescription(){
+        return getConfiguration().getOrDefault(String.format("%s.provider.description",getSubscriber().getSubscriberId()),getSubscriber().getSubscriberId());
+    }
+    public String getProviderName(){
+        return getConfiguration().getOrDefault(String.format("%s.provider.name",getSubscriber().getSubscriberId()),getSubscriber().getSubscriberId());
+    }
+
+
+    public Provider getProvider() {
+        Provider provider = new Provider();
+        provider.setDescriptor(new Descriptor());
+        provider.getDescriptor().setName(getProviderName());
+        provider.getDescriptor().setShortDesc(getProviderDescription());
+        provider.getDescriptor().setLongDesc(getProviderDescription());
+        provider.setId(getSubscriber().getSubscriberId()); // Provider is same as subscriber.!!
+        provider.setTtl(120);
+        provider.setPayments(getSupportedPaymentCollectionMethods());
+        provider.setLocations(getProviderLocations());
+        provider.setItems(getItems());
+        return provider;
+    }
+    public boolean isCodSupported(){
+        return false;
+    }
+
+    public Payments getSupportedPaymentCollectionMethods(){
+        Payments payments = new Payments();
+        Payment payment = new Payment();
+        payment.setId("1");
+        payment.setType(PaymentType.ON_ORDER);
+        payment.setCollectedBy(CollectedBy.BAP);
+        payments.add(payment);
+        if (isCodSupported()){
+            payment = new Payment();
+            payment.setId("2");
+            payment.setType(PaymentType.ON_FULFILLMENT);
+            payment.setCollectedBy(CollectedBy.BPP);
+            payments.add(payment);
         }
-
-    }
-    public abstract void search(Request request, Request reply);
-
-    public abstract void select(Request request, Request reply);
-
-    public abstract void init(Request request, Request reply);
-
-    public abstract void confirm(Request request, Request reply);
-
-    public abstract void track(Request request, Request reply);
-
-    public abstract void cancel(Request request, Request reply);
-
-    public abstract void update(Request request, Request reply);
-
-    public abstract void status(Request request, Request reply);
-
-    public abstract void rating(Request request, Request reply);
-
-    public abstract void support(Request request, Request reply);
-
-    public abstract void get_cancellation_reasons(Request request, Request reply);
-
-    public abstract void get_return_reasons(Request request, Request reply);
-
-    public abstract void get_rating_categories(Request request, Request reply);
-
-    public abstract void get_feedback_categories(Request request, Request reply);
-
-    public abstract void get_feedback_form(Request request, Request reply);
-
-    public void createReplyContext(Request from, Request to) {
-        Context newContext = ObjectUtil.clone(from.getContext());
-        String action = from.getContext().getAction();
-        newContext.setAction(action.startsWith("get_") ? action.substring(4) : "on_" + action);
-        newContext.setBppId(getSubscriber().getSubscriberId());
-        newContext.setBppUri(getSubscriber().getSubscriberUrl());
-        to.setContext(newContext);
+        return payments;
     }
 
-    public void callback(Request reply) {
-
-        if (reply.getContext() == null){
-            throw new RuntimeException("Create Context before sending callback");
-        }
-        reply.getContext().setBppId(getSubscriber().getSubscriberId());
-        reply.getContext().setBppUri(getSubscriber().getSubscriberUrl());
-        TaskManager.instance().executeAsync(new BppActionTask(this, reply, new HashMap<>()) {
-            @Override
-            public Request generateCallBackRequest() {
-                registerSignatureHeaders("Authorization");
-                log("ToApplication", reply, getHeaders(), reply, "/" + reply.getContext().getAction());
-                return reply;
-            }
-        }, false);
-    }
-
-    public void log(String direction,
-                           Request request, Map<String, String> headers, BecknAware response,
-                           String url) {
-        Map<String,String> maskedHeaders = new HashMap<>();
-        headers.forEach((k,v)->{
-            maskedHeaders.put(k, Config.instance().isDevelopmentEnvironment()? v : "***");
-        });
-        Config.instance().getLogger(BppActionTask.class.getName()).log(Level.INFO,String.format("%s|%s|%s|%s|%s",direction,request,headers,response,url));
-
-    }
 
 }
