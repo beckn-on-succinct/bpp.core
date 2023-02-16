@@ -1,12 +1,24 @@
 package in.succinct.bpp.core.adaptor.api;
 
 import com.venky.core.util.ObjectUtil;
+import com.venky.swf.db.Database;
+import com.venky.swf.db.JdbcTypeHelper.TypeConverter;
 import com.venky.swf.plugins.background.core.TaskManager;
 import com.venky.swf.routing.Config;
 import in.succinct.beckn.BecknAware;
+import in.succinct.beckn.CancellationReasons;
+import in.succinct.beckn.Catalog;
 import in.succinct.beckn.Context;
+import in.succinct.beckn.FeedbackCategories;
+import in.succinct.beckn.Message;
+import in.succinct.beckn.Order;
+import in.succinct.beckn.Provider;
+import in.succinct.beckn.Providers;
+import in.succinct.beckn.RatingCategories;
 import in.succinct.beckn.Request;
+import in.succinct.beckn.ReturnReasons;
 import in.succinct.beckn.Subscriber;
+import in.succinct.beckn.Tracking;
 import in.succinct.bpp.core.adaptor.CommerceAdaptor;
 import in.succinct.bpp.core.adaptor.NetworkAdaptor;
 import in.succinct.bpp.core.tasks.BppActionTask;
@@ -42,35 +54,128 @@ public abstract class NetworkApiAdaptor {
         }
     }
     public abstract void search(CommerceAdaptor adaptor,Request request, Request reply);
-    public abstract void _search(CommerceAdaptor adaptor,Request reply);
+
+    public void _search(CommerceAdaptor adaptor, Request reply) {
+        Message message = new Message();
+        reply.setMessage(message);
+
+        Catalog catalog = new Catalog();
+        message.setCatalog(catalog);
+
+        Providers providers = new Providers();
+        catalog.setProviders(providers);
+        Provider provider = getNetworkAdaptor().create(Provider.class,adaptor.getSubscriber().getDomain());
+        provider.load(adaptor.getProvider());
+        providers.add(provider);
+    }
+    protected final TypeConverter<Double> doubleTypeConverter = Database.getJdbcTypeHelper("").getTypeRef(double.class).getTypeConverter();
+    protected final TypeConverter<Boolean> booleanTypeConverter  = Database.getJdbcTypeHelper("").getTypeRef(boolean.class).getTypeConverter();
+
 
     public abstract void select(CommerceAdaptor adaptor,Request request, Request reply);
 
-    public abstract void init(CommerceAdaptor adaptor,Request request, Request reply);
 
-    public abstract void confirm(CommerceAdaptor adaptor,Request request, Request reply);
+    public void init(CommerceAdaptor adaptor, Request request, Request reply) {
+        Order order = getInputOrder(adaptor,request.getMessage().getOrder());
 
-    public abstract void track(CommerceAdaptor adaptor,Request request, Request reply);
+        Message message = new Message();
+        reply.setMessage(message);
 
-    public abstract void cancel(CommerceAdaptor adaptor,Request request, Request reply);
+        Order draftOrder = adaptor.initializeDraftOrder(request);
+        Order outOrder = getOutputOrder(adaptor,draftOrder);
+        message.setOrder(outOrder);
+    }
 
-    public abstract void update(CommerceAdaptor adaptor,Request request, Request reply);
+    public void confirm(CommerceAdaptor adaptor, Request request, Request reply) {
+        Order order = request.getMessage().getOrder();
+        if (order == null){
+            throw new RuntimeException("No Order passed");
+        }
+        Order bapOrder = getInputOrder(adaptor,order);
 
-    public abstract void status(CommerceAdaptor adaptor,Request request, Request reply);
+        Message message = new Message(); reply.setMessage(message);
+        Order draftOrder = adaptor.initializeDraftOrder(request); // RECompute
 
-    public abstract void rating(CommerceAdaptor adaptor,Request request, Request reply);
+        Order confirmedOrder = adaptor.confirmDraftOrder(draftOrder);
+        Order outOrder = getOutputOrder(adaptor,confirmedOrder);
+        message.setOrder(outOrder);
+    }
 
-    public abstract void support(CommerceAdaptor adaptor,Request request, Request reply);
 
-    public abstract void get_cancellation_reasons(CommerceAdaptor adaptor,Request request, Request reply);
+    public void track(CommerceAdaptor adaptor, Request request, Request reply) {
+        /* Take track message and fill response with on_track message */
+        Order order = request.getMessage().getOrder();
+        if (order == null){
+            throw new RuntimeException("No Order passed");
+        }
+        String trackUrl  = adaptor.getTrackingUrl(order);
+        if (trackUrl != null) {
+            Message message = new Message();
+            reply.setMessage(message);
+            message.setTracking(getNetworkAdaptor().create(Tracking.class, adaptor.getSubscriber().getDomain()));
+            message.getTracking().setUrl(trackUrl);
+        }
+    }
 
-    public abstract void get_return_reasons(CommerceAdaptor adaptor,Request request, Request reply);
 
-    public abstract void get_rating_categories(CommerceAdaptor adaptor,Request request, Request reply);
 
-    public abstract void get_feedback_categories(CommerceAdaptor adaptor,Request request, Request reply);
 
-    public abstract void get_feedback_form(CommerceAdaptor adaptor,Request request, Request reply);
+    public void cancel(CommerceAdaptor adaptor, Request request, Request reply) {
+        Order order = getInputOrder(adaptor,request.getMessage().getOrder());
+
+        Order cancelledOrder = adaptor.cancel(order);
+        Message message = new Message(); reply.setMessage(message);
+
+        Order outOrder = getOutputOrder(adaptor,cancelledOrder);
+        message.setOrder(outOrder);
+    }
+
+    public void update(CommerceAdaptor adaptor, Request request, Request reply) {
+        throw new RuntimeException("Orders cannot be updated. Please cancel and rebook your orders!");
+    }
+
+    public void status(CommerceAdaptor adaptor, Request request, Request reply) {
+        Order order = request.getMessage().getOrder();
+        if (order == null){
+            order = new Order();
+            order.setId(request.getMessage().get("order_id"));
+            request.getMessage().setOrder(order);
+        }
+        order = getInputOrder(adaptor,order);
+
+        reply.setMessage(new Message());
+
+        Order current = adaptor.getStatus(order);
+        reply.getMessage().setOrder(getOutputOrder(adaptor,current));
+    }
+
+    public void rating(CommerceAdaptor adaptor, Request request, Request reply) {
+
+    }
+
+    public void support(CommerceAdaptor adaptor, Request request, Request reply) {
+        reply.setMessage(new Message());
+        reply.getMessage().setEmail(adaptor.getProviderConfig().getSupportContact().getEmail());
+    }
+
+    public void get_cancellation_reasons(CommerceAdaptor adaptor, Request request, Request reply) {
+        reply.setCancellationReasons(new CancellationReasons());
+    }
+
+    public void get_return_reasons(CommerceAdaptor adaptor, Request request, Request reply) {
+        reply.setReturnReasons(new ReturnReasons());
+    }
+
+    public void get_rating_categories(CommerceAdaptor adaptor, Request request, Request reply) {
+        reply.setRatingCategories(new RatingCategories());
+    }
+
+    public void get_feedback_categories(CommerceAdaptor adaptor, Request request, Request reply) {
+        reply.setFeedbackCategories(new FeedbackCategories());
+    }
+
+    public void get_feedback_form(CommerceAdaptor adaptor, Request request, Request reply) {
+    }
 
     public void createReplyContext(Subscriber subscriber, Request from, Request to) {
         Context newContext = ObjectUtil.clone(from.getContext());
@@ -107,5 +212,29 @@ public abstract class NetworkApiAdaptor {
         });
         Config.instance().getLogger(BppActionTask.class.getName()).log(Level.INFO,String.format("%s|%s|%s|%s|%s",direction,request,headers,response,url));
 
+    }
+    protected Order getInputOrder(CommerceAdaptor adaptor, Order order){
+        if (order == null){
+            throw new RuntimeException("No Order passed");
+        }
+        Order networkOrder = getNetworkAdaptor().create(Order.class,adaptor.getSubscriber().getDomain());
+        networkOrder.setInner(order.getInner());
+
+        Order becknOrder = new Order();
+        becknOrder.load(networkOrder);
+
+        order.setInner(becknOrder.getInner());
+        return order;
+    }
+
+    protected Order getOutputOrder(CommerceAdaptor adaptor,Order order){
+        if (order == null){
+            throw new RuntimeException("No Order passed");
+        }
+        Order networkOrder = getNetworkAdaptor().create(Order.class,adaptor.getSubscriber().getDomain());
+        networkOrder.load(order);
+
+
+        return networkOrder;
     }
 }

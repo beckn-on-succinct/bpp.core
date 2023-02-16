@@ -34,6 +34,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.logging.Level;
 
 public abstract class NetworkAdaptor extends BecknObjectWithId {
     protected NetworkAdaptor(String networkName){
@@ -183,6 +184,9 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
         if (lookup(subscriber.getSubscriberId(),false).isEmpty()){
             if (isSelfRegistrationSupported()) {
                 register(subscriber);
+            }else {
+                Config.instance().getLogger(getClass().getName()).log(Level.WARNING,"Contact Registrar to register to network !");
+                return;
             }
         }
         Request request = new Request(getSubscriptionJson(subscriber));

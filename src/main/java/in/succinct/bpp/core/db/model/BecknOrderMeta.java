@@ -1,5 +1,7 @@
 package in.succinct.bpp.core.db.model;
 
+import com.venky.swf.db.annotations.column.COLUMN_SIZE;
+import com.venky.swf.db.annotations.column.IS_NULLABLE;
 import com.venky.swf.db.annotations.column.UNIQUE_KEY;
 import com.venky.swf.db.annotations.column.indexing.Index;
 import com.venky.swf.db.model.Model;
@@ -27,5 +29,10 @@ public interface BecknOrderMeta extends Model {
     @UNIQUE_KEY("eo")
     public String getECommerceOrderId();
     public void setECommerceOrderId(String eCommerceOrderId);
+
+    @COLUMN_SIZE(2048*8)
+    @IS_NULLABLE
+    public String getOrderJson();
+    public void setOrderJson(String orderJson);
 
 }
