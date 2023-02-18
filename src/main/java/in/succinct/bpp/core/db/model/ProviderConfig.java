@@ -192,7 +192,7 @@ public class ProviderConfig extends BecknObject {
                     for (DeliveryRule rule : rules){
                         if (rule.getMinDistance() <= distance && distance < rule.getMaxDistance() && !rule.isOnActual() && !rule.isDeliveryViaNetwork()){
                             serviceability.setServiceable(true);
-                            serviceability.setCharges(rule.getRatePerKm() * distance);
+                            serviceability.setCharges(rule.getFixedRate() + rule.getRatePerKm() * distance);
                         }
                     }
                 }
@@ -292,9 +292,18 @@ public class ProviderConfig extends BecknObject {
         public double getRatePerKm(){
             return getDouble("rate_per_km");
         }
-        public void setRatePerKm(double rate_per_km){
-            set("rate_per_km",rate_per_km);
+        public void setRatePerKm(double rate){
+            set("rate",rate);
         }
+
+        public double getFixedRate(){
+            return getDouble("fixed_rate");
+        }
+        public void setFixedRate(double fixed_rate){
+            set("fixed_rate",fixed_rate);
+        }
+
+
 
         public boolean isOnActual(){
             return getBoolean("on_actual");
