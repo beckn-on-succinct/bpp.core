@@ -23,6 +23,7 @@ import in.succinct.bpp.core.adaptor.CommerceAdaptor;
 import in.succinct.bpp.core.adaptor.NetworkAdaptor;
 import in.succinct.bpp.core.tasks.BppActionTask;
 import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -65,7 +66,7 @@ public abstract class NetworkApiAdaptor {
         Providers providers = new Providers();
         catalog.setProviders(providers);
         Provider provider = getNetworkAdaptor().create(Provider.class,adaptor.getSubscriber().getDomain());
-        provider.load(adaptor.getProvider());
+        provider.update(adaptor.getProvider());
         providers.add(provider);
     }
     protected final TypeConverter<Double> doubleTypeConverter = Database.getJdbcTypeHelper("").getTypeRef(double.class).getTypeConverter();
@@ -218,10 +219,10 @@ public abstract class NetworkApiAdaptor {
             throw new RuntimeException("No Order passed");
         }
         Order networkOrder = getNetworkAdaptor().create(Order.class,adaptor.getSubscriber().getDomain());
-        networkOrder.setInner(order.getInner());
+        networkOrder.setInner((JSONObject) JSONValue.parse(order.getInner().toString()));
 
         Order becknOrder = new Order();
-        becknOrder.load(networkOrder);
+        becknOrder.update(networkOrder);
 
         order.setInner(becknOrder.getInner());
         return order;
@@ -232,7 +233,7 @@ public abstract class NetworkApiAdaptor {
             throw new RuntimeException("No Order passed");
         }
         Order networkOrder = getNetworkAdaptor().create(Order.class,adaptor.getSubscriber().getDomain());
-        networkOrder.load(order);
+        networkOrder.update(order);
 
 
         return networkOrder;

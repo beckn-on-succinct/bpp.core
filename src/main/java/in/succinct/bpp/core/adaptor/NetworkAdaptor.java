@@ -23,6 +23,9 @@ import org.json.simple.JSONValue;
 
 import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.time.Duration;
@@ -260,6 +263,34 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
 
         public String getSchema(){
             return get("schema");
+        }
+
+        public URL getSchemaURL(){
+            String s = getSchema();
+            if (ObjectUtil.isVoid(s)){
+                return null;
+            }
+            URL url = null ;
+
+            try {
+                if (s.startsWith("/")){
+                    url = Config.class.getResource(s);
+                    if (url == null){
+                        return null;
+                    }
+                }else {
+                    url = new URL(s);
+                }
+                try {
+                    URLConnection connection = url.openConnection();
+                    connection.connect();
+                }catch (Exception ex){
+                    url = null ;
+                }
+                return url;
+            } catch (MalformedURLException e) {
+                throw new RuntimeException(e);
+            }
         }
         public void setSchema(String schema){
             set("schema",schema);

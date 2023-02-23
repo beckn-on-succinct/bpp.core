@@ -4,14 +4,16 @@ import com.venky.core.util.ObjectUtil;
 import com.venky.swf.db.model.application.Application;
 import com.venky.swf.db.model.application.ApplicationUtil;
 import com.venky.swf.plugins.beckn.messaging.Subscriber;
-import in.succinct.beckn.BecknObject;
-import in.succinct.beckn.BecknObjects;
+import in.succinct.beckn.Categories;
+import in.succinct.beckn.Context;
 import in.succinct.beckn.Descriptor;
 import in.succinct.beckn.Fulfillment;
 import in.succinct.beckn.Fulfillment.FulfillmentType;
+import in.succinct.beckn.Fulfillment.ServiceablityTags;
 import in.succinct.beckn.Fulfillments;
 import in.succinct.beckn.Images;
 import in.succinct.beckn.Items;
+import in.succinct.beckn.Location;
 import in.succinct.beckn.Locations;
 import in.succinct.beckn.Order;
 import in.succinct.beckn.Payment;
@@ -22,9 +24,13 @@ import in.succinct.beckn.Provider;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.Tag;
 import in.succinct.beckn.Tag.List;
+import in.succinct.bpp.core.adaptor.api.BecknIdHelper;
+import in.succinct.bpp.core.adaptor.api.BecknIdHelper.Entity;
 import in.succinct.bpp.core.db.model.ProviderConfig;
 import in.succinct.bpp.core.db.model.ProviderConfig.DeliveryRules;
+import org.json.simple.JSONArray;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public abstract class CommerceAdaptor {
@@ -72,7 +78,7 @@ public abstract class CommerceAdaptor {
     protected Fulfillment getStorePickup(){
         Fulfillment cFulfillment = new Fulfillment();
         cFulfillment.setType(FulfillmentType.store_pickup);
-        cFulfillment.setId("1");
+        cFulfillment.setId(BecknIdHelper.getBecknId("1",getSubscriber().getSubscriberId(), Entity.fulfillment));
         cFulfillment.setContact(getProviderConfig().getSupportContact());
         return cFulfillment;
     }
@@ -80,32 +86,34 @@ public abstract class CommerceAdaptor {
     protected Fulfillment getHomeDelivery(){
         Fulfillment cFulfillment = new Fulfillment();
         cFulfillment.setType(FulfillmentType.home_delivery);
-        cFulfillment.setId("2");
+        cFulfillment.setId(BecknIdHelper.getBecknId("2",getSubscriber().getSubscriberId(), Entity.fulfillment));
         cFulfillment.setContact(getProviderConfig().getSupportContact());
         cFulfillment.setProviderName(getProviderConfig().getFulfillmentProviderName());
         cFulfillment.setTracking(false);
         cFulfillment.setCategory(getProviderConfig().getFulfillmentCategory().toString());
         cFulfillment.setTAT(getProviderConfig().getFulfillmentTurnAroundTime());
 
-        BecknObjects<BecknObject> list = new BecknObjects<>();
-        cFulfillment.set("tags",list);
+        cFulfillment.setServiceablityTags(new ServiceablityTags());
 
-        List serviceabilityTags = new List();
-        list.add(new Tag("serviceability",serviceabilityTags));
+        ServiceablityTags serviceabilityTags = cFulfillment.getServiceablityTags();
+
+
+        List serviceabilityTagDetail = new List();
+        serviceabilityTags.add(new Tag("serviceability",serviceabilityTagDetail));
 
         DeliveryRules rules = getProviderConfig().getDeliveryRules();
         if (rules == null || rules.size() == 0) {
-            serviceabilityTags.add(new Tag("location", getProviderConfig().getLocation().getId()));
-            serviceabilityTags.add(new Tag("category", getProviderConfig().getCategory().getId()));
-            serviceabilityTags.add(new Tag("type", "12"));
-            serviceabilityTags.add(new Tag("val", "IND"));
-            serviceabilityTags.add(new Tag("unit", "Country"));
+            serviceabilityTagDetail.add(new Tag("location", getProviderConfig().getLocation().getId()));
+            serviceabilityTagDetail.add(new Tag("category", getProviderConfig().getCategory().getId()));
+            serviceabilityTagDetail.add(new Tag("type", "12"));
+            serviceabilityTagDetail.add(new Tag("val", "IND"));
+            serviceabilityTagDetail.add(new Tag("unit", "Country"));
         }else {
-            serviceabilityTags.add(new Tag("location", getProviderConfig().getLocation().getId()));
-            serviceabilityTags.add(new Tag("category", getProviderConfig().getCategory().getId()));
-            serviceabilityTags.add(new Tag("type", "10"));
-            serviceabilityTags.add(new Tag("val", rules.get(0).getMaxDistance()));
-            serviceabilityTags.add(new Tag("unit", "km"));
+            serviceabilityTagDetail.add(new Tag("location", getProviderConfig().getLocation().getId()));
+            serviceabilityTagDetail.add(new Tag("category", getProviderConfig().getCategory().getId()));
+            serviceabilityTagDetail.add(new Tag("type", "10"));
+            serviceabilityTagDetail.add(new Tag("val", rules.get(0).getMaxDistance()));
+            serviceabilityTagDetail.add(new Tag("unit", "km"));
         }
         return cFulfillment;
 
@@ -135,6 +143,8 @@ public abstract class CommerceAdaptor {
         provider.setFulfillments(getFulfillments());
         provider.setItems(getItems());
         provider.setCategoryId(config.getCategory().getId());
+        provider.setCategories(new Categories());
+        provider.getCategories().add(providerConfig.getCategory());
         provider.setTime(config.getTime());
         return provider;
     }
@@ -143,20 +153,85 @@ public abstract class CommerceAdaptor {
     public Payments getSupportedPaymentCollectionMethods(){
         Payments payments = new Payments();
         Payment payment = new Payment();
-        payment.setId("1");
+        payment.setId(BecknIdHelper.getBecknId("1",getSubscriber().getSubscriberId(), Entity.payment));
         payment.setType(PaymentType.ON_ORDER);
         payment.setCollectedBy(CollectedBy.BAP);
         payments.add(payment);
         if (getProviderConfig().isCodSupported()){
             payment = new Payment();
-            payment.setId("2");
+            payment.setId(BecknIdHelper.getBecknId("2",getSubscriber().getSubscriberId(), Entity.payment));
             payment.setType(PaymentType.ON_FULFILLMENT);
             payment.setCollectedBy(CollectedBy.BPP);
             payments.add(payment);
         }
         return payments;
     }
+    public void fixFulfillment(Context context, Order order){
+        if (order.getFulfillments() == null) {
+            order.setFulfillments(new in.succinct.beckn.Fulfillments());
+        }
+        Map<FulfillmentType, in.succinct.beckn.Fulfillment> map = new HashMap<>();
+        for (in.succinct.beckn.Fulfillment f :getFulfillments()) {
+            map.put(f.getType(),f);
+        }
 
+        Fulfillment fulfillment = order.getFulfillment();
+        if (fulfillment != null ){
+            if (fulfillment.getId() == null){
+                fulfillment.setId("fulfillment/"+fulfillment.getType()+"/"+context.getTransactionId());
+            }
+            if (order.getFulfillments().get(fulfillment.getId()) == null){
+                order.setFulfillments(new Fulfillments());
+                order.getFulfillments().add(fulfillment);
+            }
+        }else if (order.getFulfillments().size() > 1) {
+            throw new RuntimeException("Don't know how to fulfil the order");
+        }else if (order.getFulfillments().size() == 1) {
+            order.setFulfillment(order.getFulfillments().get(0));
+        }else {
+            order.setFulfillment(map.get(FulfillmentType.store_pickup));
+        }
+        fulfillment = order.getFulfillment();
+        if (fulfillment != null && fulfillment.getType() == null){
+            if (fulfillment.getEnd() == null && map.containsKey(FulfillmentType.store_pickup)) {
+                fulfillment.setType(FulfillmentType.store_pickup);
+            }else if (map.containsKey(FulfillmentType.home_delivery)){
+                fulfillment.setType(FulfillmentType.home_delivery);
+            }else {
+                order.setFulfillment(null);
+                order.getFulfillments().setInner(new JSONArray());
+            }
+        }
+        fulfillment = order.getFulfillment();
+        if (fulfillment != null){
+            fulfillment.rm("id");
+            Fulfillment configFulfillment = map.get(fulfillment.getType());
+            fulfillment.update(configFulfillment);
+            fulfillment.rm("id");
+            fulfillment.setId("fulfillment/"+fulfillment.getType()+"/"+context.getTransactionId());
+        }
+    }
+    public void fixLocation(Order order){
+        Locations allLocations = getProviderLocations();
+        Locations locations = order.getProvider().getLocations();
+        if (locations == null){
+            locations = new Locations();
+            order.getProvider().setLocations(locations);
+        }
+        if (order.getProviderLocation() != null){
+            if (locations.get(order.getProviderLocation().getId()) == null){
+                locations.add(order.getProviderLocation());
+            }
+        }
+        for (Location location : locations){
+            Location actualLocation = allLocations.get(location.getId());
+            location.rm("id");
+            location.update(actualLocation);
+        }
+        if (locations.size() == 1 ){
+            order.setProviderLocation(locations.get(0));
+        }
+    }
 
     public abstract Locations getProviderLocations();
     public abstract Items getItems();

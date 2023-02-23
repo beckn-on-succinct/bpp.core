@@ -6,6 +6,7 @@ import in.succinct.beckn.Request;
 import in.succinct.bpp.core.adaptor.CommerceAdaptor;
 import in.succinct.bpp.core.adaptor.api.NetworkApiAdaptor;
 
+import java.net.URL;
 import java.util.Map;
 
 
@@ -36,10 +37,10 @@ public class BppActionTask extends BppTask {
     @Override
     protected BecknApiCall send(Request callbackRequest) {
         String domain = callbackRequest.getContext().getDomain();
-        return send(callbackRequest,networkApiAdaptor.getNetworkAdaptor().getDomains().get(domain).getSchema());
+        return send(callbackRequest,networkApiAdaptor.getNetworkAdaptor().getDomains().get(domain).getSchemaURL());
     }
 
-    protected BecknApiCall send(Request callbackRequest,String schemaSource){
+    protected BecknApiCall send(Request callbackRequest, URL schemaSource){
         BecknApiCall apiCall = super.send(callbackRequest.getContext().getBapUri() , callbackRequest,schemaSource);
         networkApiAdaptor.log("ToNetwork",callbackRequest,apiCall.getHeaders(),apiCall.getResponse(),apiCall.getUrl());
         return apiCall;
@@ -48,7 +49,7 @@ public class BppActionTask extends BppTask {
     @Override
     protected void sendError(Throwable th) {
         String domain = getRequest().getContext().getDomain();
-        super.sendError(th,networkApiAdaptor.getNetworkAdaptor().getDomains().get(domain).getSchema());
+        super.sendError(th,networkApiAdaptor.getNetworkAdaptor().getDomains().get(domain).getSchemaURL());
     }
 
 
