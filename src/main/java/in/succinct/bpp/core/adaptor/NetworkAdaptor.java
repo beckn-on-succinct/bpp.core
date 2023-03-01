@@ -1,8 +1,8 @@
 package in.succinct.bpp.core.adaptor;
 
 
+import com.venky.cache.Cache;
 import com.venky.core.security.Crypt;
-import com.venky.core.util.ObjectHolder;
 import com.venky.core.util.ObjectUtil;
 import com.venky.swf.db.annotations.column.ui.mimes.MimeType;
 import com.venky.swf.db.model.CryptoKey;
@@ -10,7 +10,7 @@ import com.venky.swf.integration.api.Call;
 import com.venky.swf.integration.api.HttpMethod;
 import com.venky.swf.integration.api.InputFormat;
 import com.venky.swf.routing.Config;
-import com.venky.swf.views.controls.page.layout.headings.H;
+import in.succinct.beckn.BecknAware;
 import in.succinct.beckn.BecknObject;
 import in.succinct.beckn.BecknObjectWithId;
 import in.succinct.beckn.BecknObjectsWithId;
@@ -18,11 +18,11 @@ import in.succinct.beckn.Request;
 import in.succinct.beckn.Subscriber;
 import in.succinct.bpp.core.adaptor.api.NetworkApiAdaptor;
 import org.json.simple.JSONArray;
+import org.json.simple.JSONAware;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
 import java.io.InputStreamReader;
-import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -40,6 +40,9 @@ import java.util.Set;
 import java.util.logging.Level;
 
 public abstract class NetworkAdaptor extends BecknObjectWithId {
+    protected NetworkAdaptor(){
+
+    }
     protected NetworkAdaptor(String networkName){
         setId(networkName);
         getInner().putAll(getConfig());
@@ -184,14 +187,23 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
     }
 
     public void subscribe(Subscriber subscriber) {
-        if (lookup(subscriber.getSubscriberId(),false).isEmpty()){
+        List<Subscriber> subscribers = lookup(subscriber.getSubscriberId(),false);
+
+        if (subscribers.isEmpty()){
             if (isSelfRegistrationSupported()) {
                 register(subscriber);
             }else {
                 Config.instance().getLogger(getClass().getName()).log(Level.WARNING,"Contact Registrar to register to network !");
                 return;
             }
+        }else if (ObjectUtil.equals(Subscriber.SUBSCRIBER_STATUS_SUBSCRIBED,subscribers.get(0).getStatus())){
+            Subscriber me = subscribers.get(0);
+            long now = System.currentTimeMillis();
+            if (me.getValidFrom().getTime() < now && me.getValidTo().getTime() > now){
+                return;
+            }
         }
+
         Request request = new Request(getSubscriptionJson(subscriber));
 
         Call<JSONObject> call = new Call<JSONObject>().url(getRegistryUrl(), "subscribe").
@@ -308,24 +320,50 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
 
 
     Set<Class<?>> classesWithNoExtension = new HashSet<>();
-    public <B extends BecknObject, E extends B> B create(Class<B> clazz , String domainId){
-        if (!ObjectUtil.equals(clazz.getPackageName(),"in.succinct.beckn")){
-            throw new IllegalArgumentException("only classes  in.succinct.beckn.* are allowed");
-        }
-        String clazzName = String.format("%s.%s",getDomains().get(domainId).getExtensionPackage(),clazz.getSimpleName());
-        try {
-            Class<?> extendedClass = classesWithNoExtension.contains(clazz)? clazz : Class.forName(clazzName);
-            return (B)extendedClass.getConstructor().newInstance();
-        } catch (ClassNotFoundException e) {
-            classesWithNoExtension.add(clazz);
-            try {
-                return clazz.getConstructor().newInstance();
-            }catch (Exception ex){
-                throw new RuntimeException(ex);
+    @SuppressWarnings("unchecked")
+    private <B> B create(Class<B> clazz , String domainId){
+        Class<?> extendedClass = clazz;
+
+        if (BecknObject.class.isAssignableFrom(clazz)){
+            if (!clazz.getPackageName().startsWith("in.succinct.beckn")){
+                throw new IllegalArgumentException("only classes  in.succinct.beckn.* are allowed");
             }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+            String clazzName = String.format("%s.%s",getDomains().get(domainId).getExtensionPackage(),clazz.getSimpleName());
+            try {
+                extendedClass = classesWithNoExtension.contains(clazz)? clazz : Class.forName(clazzName);
+            } catch (ClassNotFoundException e) {
+                classesWithNoExtension.add(clazz);
+
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
 
+        try {
+            return (B)(extendedClass.getConstructor().newInstance());
+        }catch (Exception ex){
+            throw new RuntimeException(ex);
+        }
     }
+
+    private transient Cache<String,BecknObjectCreator> becknObjectCreatorCache = new Cache<>(0,0) {
+        @Override
+        protected BecknObjectCreator getValue(String domainId) {
+            return new BecknObjectCreator(){
+                @Override
+                public <B> B create(Class<B> clazz) {
+                    B b = NetworkAdaptor.this.create(clazz,domainId);
+                    if (b instanceof BecknAware){
+                        ((BecknAware)b).setObjectCreator(this);
+                    }
+                    return b;
+                }
+            };
+        }
+    };
+
+    public BecknObjectCreator getObjectCreator(String domain){
+        return becknObjectCreatorCache.get(domain);
+    }
+
 }

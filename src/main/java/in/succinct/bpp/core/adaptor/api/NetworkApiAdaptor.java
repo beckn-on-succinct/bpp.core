@@ -43,6 +43,7 @@ public abstract class NetworkApiAdaptor {
     public void call(CommerceAdaptor adaptor, Map<String,String> headers, Request request, Request response){
         JSONObject h = new JSONObject();h.putAll(headers);
         request.getExtendedAttributes().set("headers",h);
+        request.setObjectCreator(getNetworkAdaptor().getObjectCreator(adaptor.getSubscriber().getDomain()));
         try {
             createReplyContext(adaptor.getSubscriber(),request,response);
             Method method = getClass().getMethod(request.getContext().getAction(), CommerceAdaptor.class, Request.class, Request.class);
@@ -65,8 +66,7 @@ public abstract class NetworkApiAdaptor {
 
         Providers providers = new Providers();
         catalog.setProviders(providers);
-        Provider provider = getNetworkAdaptor().create(Provider.class,adaptor.getSubscriber().getDomain());
-        provider.update(adaptor.getProvider());
+        Provider provider = adaptor.getProvider();
         providers.add(provider);
     }
     protected final TypeConverter<Double> doubleTypeConverter = Database.getJdbcTypeHelper("").getTypeRef(double.class).getTypeConverter();
@@ -77,14 +77,12 @@ public abstract class NetworkApiAdaptor {
 
 
     public void init(CommerceAdaptor adaptor, Request request, Request reply) {
-        Order order = getInputOrder(adaptor,request.getMessage().getOrder());
 
         Message message = new Message();
         reply.setMessage(message);
 
         Order draftOrder = adaptor.initializeDraftOrder(request);
-        Order outOrder = getOutputOrder(adaptor,draftOrder);
-        message.setOrder(outOrder);
+        message.setOrder(draftOrder);
     }
 
     public void confirm(CommerceAdaptor adaptor, Request request, Request reply) {
@@ -92,14 +90,11 @@ public abstract class NetworkApiAdaptor {
         if (order == null){
             throw new RuntimeException("No Order passed");
         }
-        Order bapOrder = getInputOrder(adaptor,order);
-
         Message message = new Message(); reply.setMessage(message);
         Order draftOrder = adaptor.initializeDraftOrder(request); // RECompute
 
         Order confirmedOrder = adaptor.confirmDraftOrder(draftOrder);
-        Order outOrder = getOutputOrder(adaptor,confirmedOrder);
-        message.setOrder(outOrder);
+        message.setOrder(confirmedOrder);
     }
 
 
@@ -113,7 +108,7 @@ public abstract class NetworkApiAdaptor {
         if (trackUrl != null) {
             Message message = new Message();
             reply.setMessage(message);
-            message.setTracking(getNetworkAdaptor().create(Tracking.class, adaptor.getSubscriber().getDomain()));
+            message.setTracking(new Tracking());
             message.getTracking().setUrl(trackUrl);
         }
     }
@@ -122,13 +117,11 @@ public abstract class NetworkApiAdaptor {
 
 
     public void cancel(CommerceAdaptor adaptor, Request request, Request reply) {
-        Order order = getInputOrder(adaptor,request.getMessage().getOrder());
+        Order order = request.getMessage().getOrder();
 
         Order cancelledOrder = adaptor.cancel(order);
         Message message = new Message(); reply.setMessage(message);
-
-        Order outOrder = getOutputOrder(adaptor,cancelledOrder);
-        message.setOrder(outOrder);
+        message.setOrder(cancelledOrder);
     }
 
     public void update(CommerceAdaptor adaptor, Request request, Request reply) {
@@ -142,12 +135,9 @@ public abstract class NetworkApiAdaptor {
             order.setId(request.getMessage().get("order_id"));
             request.getMessage().setOrder(order);
         }
-        order = getInputOrder(adaptor,order);
-
         reply.setMessage(new Message());
-
         Order current = adaptor.getStatus(order);
-        reply.getMessage().setOrder(getOutputOrder(adaptor,current));
+        reply.getMessage().setOrder(current);
     }
 
     public void rating(CommerceAdaptor adaptor, Request request, Request reply) {
@@ -194,6 +184,9 @@ public abstract class NetworkApiAdaptor {
         }
         reply.getContext().setBppId(adaptor.getSubscriber().getSubscriberId());
         reply.getContext().setBppUri(adaptor.getSubscriber().getSubscriberUrl());
+
+        Request networkReply = getNetworkAdaptor().getObjectCreator(adaptor.getSubscriber().getDomain()).create(Request.class);
+        networkReply.update(reply);
         TaskManager.instance().executeAsync(new BppActionTask(this,adaptor, reply, new HashMap<>()) {
             @Override
             public Request generateCallBackRequest() {
@@ -213,29 +206,5 @@ public abstract class NetworkApiAdaptor {
         });
         Config.instance().getLogger(BppActionTask.class.getName()).log(Level.INFO,String.format("%s|%s|%s|%s|%s",direction,request,headers,response,url));
 
-    }
-    protected Order getInputOrder(CommerceAdaptor adaptor, Order order){
-        if (order == null){
-            throw new RuntimeException("No Order passed");
-        }
-        Order networkOrder = getNetworkAdaptor().create(Order.class,adaptor.getSubscriber().getDomain());
-        networkOrder.setInner((JSONObject) JSONValue.parse(order.getInner().toString()));
-
-        Order becknOrder = new Order();
-        becknOrder.update(networkOrder);
-
-        order.setInner(becknOrder.getInner());
-        return order;
-    }
-
-    protected Order getOutputOrder(CommerceAdaptor adaptor,Order order){
-        if (order == null){
-            throw new RuntimeException("No Order passed");
-        }
-        Order networkOrder = getNetworkAdaptor().create(Order.class,adaptor.getSubscriber().getDomain());
-        networkOrder.update(order);
-
-
-        return networkOrder;
     }
 }

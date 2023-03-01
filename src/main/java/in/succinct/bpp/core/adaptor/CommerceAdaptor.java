@@ -145,7 +145,8 @@ public abstract class CommerceAdaptor {
         provider.setCategoryId(config.getCategory().getId());
         provider.setCategories(new Categories());
         provider.getCategories().add(providerConfig.getCategory());
-        provider.setTime(config.getTime());
+        //provider.setTime(config.getTime());
+
         return provider;
     }
 
@@ -175,40 +176,45 @@ public abstract class CommerceAdaptor {
             map.put(f.getType(),f);
         }
 
+        
+
         Fulfillment fulfillment = order.getFulfillment();
-        if (fulfillment != null ){
-            if (fulfillment.getId() == null){
-                fulfillment.setId("fulfillment/"+fulfillment.getType()+"/"+context.getTransactionId());
+
+        if (fulfillment == null) {
+            if (order.getFulfillments().size() > 1) {
+                throw new RuntimeException("Don't know how to fulfil the order");
+            } else if (order.getFulfillments().size() == 1) {
+                order.setFulfillment(order.getFulfillments().get(0));
+            } else {
+                order.setFulfillment(map.get(FulfillmentType.store_pickup));
             }
-            if (order.getFulfillments().get(fulfillment.getId()) == null){
-                order.setFulfillments(new Fulfillments());
-                order.getFulfillments().add(fulfillment);
-            }
-        }else if (order.getFulfillments().size() > 1) {
-            throw new RuntimeException("Don't know how to fulfil the order");
-        }else if (order.getFulfillments().size() == 1) {
-            order.setFulfillment(order.getFulfillments().get(0));
-        }else {
-            order.setFulfillment(map.get(FulfillmentType.store_pickup));
+            fulfillment = order.getFulfillment();
         }
-        fulfillment = order.getFulfillment();
+
         if (fulfillment != null && fulfillment.getType() == null){
             if (fulfillment.getEnd() == null && map.containsKey(FulfillmentType.store_pickup)) {
                 fulfillment.setType(FulfillmentType.store_pickup);
             }else if (map.containsKey(FulfillmentType.home_delivery)){
                 fulfillment.setType(FulfillmentType.home_delivery);
             }else {
+                fulfillment = null;
                 order.setFulfillment(null);
                 order.getFulfillments().setInner(new JSONArray());
             }
         }
-        fulfillment = order.getFulfillment();
+
+        if (fulfillment != null && fulfillment.getId() == null){
+            fulfillment.setId("fulfillment/"+fulfillment.getType()+"/"+context.getTransactionId());
+        }
+
+        order.setFulfillments(new Fulfillments());
         if (fulfillment != null){
             fulfillment.rm("id");
             Fulfillment configFulfillment = map.get(fulfillment.getType());
             fulfillment.update(configFulfillment);
             fulfillment.rm("id");
             fulfillment.setId("fulfillment/"+fulfillment.getType()+"/"+context.getTransactionId());
+            order.getFulfillments().add(fulfillment);
         }
     }
     public void fixLocation(Order order){

@@ -31,7 +31,10 @@ public class BppActionTask extends BppTask {
 
         Request callbackRequest = new Request();
         networkApiAdaptor.call(adaptor,getHeaders(),request,callbackRequest);
-        return callbackRequest;
+
+        Request finalCallbackRequest = networkApiAdaptor.getNetworkAdaptor().getObjectCreator(adaptor.getSubscriber().getDomain()).create(Request.class);
+        finalCallbackRequest.update(callbackRequest);
+        return finalCallbackRequest;
     }
 
     @Override
@@ -41,7 +44,10 @@ public class BppActionTask extends BppTask {
     }
 
     protected BecknApiCall send(Request callbackRequest, URL schemaSource){
-        BecknApiCall apiCall = super.send(callbackRequest.getContext().getBapUri() , callbackRequest,schemaSource);
+        Request request = getRequest();
+        String callBackUrl = request == null ? null : request.getExtendedAttributes().get(Request.CALLBACK_URL); // To support call back via bg
+
+        BecknApiCall apiCall = super.send(callBackUrl, callbackRequest,schemaSource);
         networkApiAdaptor.log("ToNetwork",callbackRequest,apiCall.getHeaders(),apiCall.getResponse(),apiCall.getUrl());
         return apiCall;
     }

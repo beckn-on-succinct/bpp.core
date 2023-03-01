@@ -136,7 +136,15 @@ public class ProviderConfig extends BecknObject {
         set("max_allowed_commission_percent",max_allowed_commission_percent);
     }
 
-    
+    public Integer getMaxOrderQuantity(){
+        return getInteger("max_order_quantity",null);
+    }
+    public void setMaxOrderQuantity(Integer max_order_quantity){
+        set("max_order_quantity",max_order_quantity);
+    }
+
+
+
     public static class Serviceability extends BecknObject{
         public boolean isServiceable(){
             return getBoolean("serviceable");
