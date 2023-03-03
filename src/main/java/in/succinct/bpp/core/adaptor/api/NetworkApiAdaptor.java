@@ -21,6 +21,7 @@ import in.succinct.beckn.Subscriber;
 import in.succinct.beckn.Tracking;
 import in.succinct.bpp.core.adaptor.CommerceAdaptor;
 import in.succinct.bpp.core.adaptor.NetworkAdaptor;
+import in.succinct.bpp.core.db.model.BecknOrderMeta;
 import in.succinct.bpp.core.tasks.BppActionTask;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
@@ -93,7 +94,12 @@ public abstract class NetworkApiAdaptor {
         Message message = new Message(); reply.setMessage(message);
         Order draftOrder = adaptor.initializeDraftOrder(request); // RECompute
 
-        Order confirmedOrder = adaptor.confirmDraftOrder(draftOrder);
+        BecknOrderMeta orderMeta = Database.getTable(BecknOrderMeta.class).newRecord();
+        orderMeta.setBecknTransactionId(request.getContext().getTransactionId());
+        orderMeta = Database.getTable(BecknOrderMeta.class).getRefreshed(orderMeta);
+
+
+        Order confirmedOrder = adaptor.confirmDraftOrder(draftOrder,orderMeta);
         message.setOrder(confirmedOrder);
     }
 
@@ -147,6 +153,7 @@ public abstract class NetworkApiAdaptor {
     public void support(CommerceAdaptor adaptor, Request request, Request reply) {
         reply.setMessage(new Message());
         reply.getMessage().setEmail(adaptor.getProviderConfig().getSupportContact().getEmail());
+        reply.getMessage().setPhone(adaptor.getProviderConfig().getSupportContact().getPhone());
     }
 
     public void get_cancellation_reasons(CommerceAdaptor adaptor, Request request, Request reply) {

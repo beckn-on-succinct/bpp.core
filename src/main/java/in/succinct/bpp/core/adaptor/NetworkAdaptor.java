@@ -74,11 +74,15 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
     }
 
     public Subscriber getRegistry(){
-        List<Subscriber> subscribers =  lookup(getId(),true);
+        List<Subscriber> subscribers =  lookup(getRegistryId(),true);
         if (!subscribers.isEmpty()){
             return subscribers.get(0);
         }
         return null;
+    }
+
+    private String getRegistryId() {
+        return get("registry_id");
     }
 
     public String getRegistryUrl(){
@@ -318,6 +322,13 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
 
     public abstract NetworkApiAdaptor getApiAdaptor();
 
+    public String getExtensionPackage(){
+        return get("extension_package");
+    }
+    public void setExtensionPackage(String extension_package){
+        set("extension_package",extension_package);
+    }
+
 
     Set<Class<?>> classesWithNoExtension = new HashSet<>();
     @SuppressWarnings("unchecked")
@@ -328,14 +339,21 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
             if (!clazz.getPackageName().startsWith("in.succinct.beckn")){
                 throw new IllegalArgumentException("only classes  in.succinct.beckn.* are allowed");
             }
-            String clazzName = String.format("%s.%s",getDomains().get(domainId).getExtensionPackage(),clazz.getSimpleName());
-            try {
-                extendedClass = classesWithNoExtension.contains(clazz)? clazz : Class.forName(clazzName);
-            } catch (ClassNotFoundException e) {
-                classesWithNoExtension.add(clazz);
+            String extensionPackage = getDomains().get(domainId).getExtensionPackage();
 
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+            if (ObjectUtil.isVoid(extensionPackage)) {
+                extensionPackage = getExtensionPackage();
+            }
+
+            if (!ObjectUtil.isVoid(extensionPackage)){
+                String clazzName = String.format("%s.%s",extensionPackage ,clazz.getSimpleName());
+                try {
+                    extendedClass = classesWithNoExtension.contains(clazz)? clazz : Class.forName(clazzName);
+                } catch (ClassNotFoundException e) {
+                    classesWithNoExtension.add(clazz);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             }
         }
 

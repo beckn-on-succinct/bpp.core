@@ -26,6 +26,7 @@ import in.succinct.beckn.Tag;
 import in.succinct.beckn.Tag.List;
 import in.succinct.bpp.core.adaptor.api.BecknIdHelper;
 import in.succinct.bpp.core.adaptor.api.BecknIdHelper.Entity;
+import in.succinct.bpp.core.db.model.BecknOrderMeta;
 import in.succinct.bpp.core.db.model.ProviderConfig;
 import in.succinct.bpp.core.db.model.ProviderConfig.DeliveryRules;
 import org.json.simple.JSONArray;
@@ -146,7 +147,6 @@ public abstract class CommerceAdaptor {
         provider.setCategories(new Categories());
         provider.getCategories().add(providerConfig.getCategory());
         //provider.setTime(config.getTime());
-
         return provider;
     }
 
@@ -161,7 +161,7 @@ public abstract class CommerceAdaptor {
         if (getProviderConfig().isCodSupported()){
             payment = new Payment();
             payment.setId(BecknIdHelper.getBecknId("2",getSubscriber().getSubscriberId(), Entity.payment));
-            payment.setType(PaymentType.ON_FULFILLMENT);
+            payment.setType(PaymentType.POST_FULFILLMENT);
             payment.setCollectedBy(CollectedBy.BPP);
             payments.add(payment);
         }
@@ -243,7 +243,7 @@ public abstract class CommerceAdaptor {
     public abstract Items getItems();
     public abstract boolean isTaxIncludedInPrice() ;
     public abstract Order initializeDraftOrder(Request request) ;
-    public abstract Order confirmDraftOrder(Order draftOrder) ;
+    public abstract Order confirmDraftOrder(Order draftOrder, BecknOrderMeta meta) ;
     public abstract Order getStatus(Order order);
     public abstract Order cancel(Order order) ;
     public abstract String getTrackingUrl(Order order) ;

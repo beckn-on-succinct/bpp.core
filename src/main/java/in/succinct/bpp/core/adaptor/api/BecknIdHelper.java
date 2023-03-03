@@ -13,7 +13,7 @@ public class BecknIdHelper {
     public enum Entity {
         fulfillment,
         category,
-        provider,
+        // provider, not needed as it is subscriber_id
         provider_category,
         provider_location,
         item,
