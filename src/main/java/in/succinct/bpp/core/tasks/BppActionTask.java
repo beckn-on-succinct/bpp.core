@@ -54,7 +54,7 @@ public class BppActionTask extends BppTask {
 
     @Override
     protected void sendError(Throwable th) {
-        String domain = getRequest().getContext().getDomain();
+        String domain = adaptor.getSubscriber().getDomain();
         super.sendError(th,networkApiAdaptor.getNetworkAdaptor().getDomains().get(domain).getSchemaURL());
     }
 

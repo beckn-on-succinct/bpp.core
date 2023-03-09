@@ -9,6 +9,8 @@ import in.succinct.beckn.BecknAware;
 import in.succinct.beckn.CancellationReasons;
 import in.succinct.beckn.Catalog;
 import in.succinct.beckn.Context;
+import in.succinct.beckn.Error;
+import in.succinct.beckn.Error.Type;
 import in.succinct.beckn.FeedbackCategories;
 import in.succinct.beckn.Message;
 import in.succinct.beckn.Order;
@@ -108,14 +110,25 @@ public abstract class NetworkApiAdaptor {
         /* Take track message and fill response with on_track message */
         Order order = request.getMessage().getOrder();
         if (order == null){
+            if (request.getMessage().getOrderId() != null){
+                order = new Order();
+                order.setId(request.getMessage().getOrderId());
+            }
+        }
+        if (order == null){
             throw new RuntimeException("No Order passed");
         }
         String trackUrl  = adaptor.getTrackingUrl(order);
+        Message message = new Message();
+        reply.setMessage(message);
+
         if (trackUrl != null) {
-            Message message = new Message();
-            reply.setMessage(message);
             message.setTracking(new Tracking());
             message.getTracking().setUrl(trackUrl);
+        }else {
+            reply.setError(new Error());
+            reply.getError().setType(Type.DOMAIN_ERROR);
+            reply.getError().setMessage("No information available!");
         }
     }
 
@@ -124,7 +137,15 @@ public abstract class NetworkApiAdaptor {
 
     public void cancel(CommerceAdaptor adaptor, Request request, Request reply) {
         Order order = request.getMessage().getOrder();
-
+        if (order == null){
+            if (request.getMessage().getOrderId() != null){
+                order = new Order();
+                order.setId(request.getMessage().getOrderId());
+            }
+        }
+        if (order == null){
+            throw new RuntimeException("No Order passed");
+        }
         Order cancelledOrder = adaptor.cancel(order);
         Message message = new Message(); reply.setMessage(message);
         message.setOrder(cancelledOrder);
@@ -194,12 +215,12 @@ public abstract class NetworkApiAdaptor {
 
         Request networkReply = getNetworkAdaptor().getObjectCreator(adaptor.getSubscriber().getDomain()).create(Request.class);
         networkReply.update(reply);
-        TaskManager.instance().executeAsync(new BppActionTask(this,adaptor, reply, new HashMap<>()) {
+        TaskManager.instance().executeAsync(new BppActionTask(this,adaptor, networkReply, new HashMap<>()) {
             @Override
             public Request generateCallBackRequest() {
                 registerSignatureHeaders("Authorization");
-                log("ToApplication", reply, getHeaders(), reply, "/" + reply.getContext().getAction());
-                return reply;
+                log("ToApplication", networkReply, getHeaders(), networkReply, "/" + networkReply.getContext().getAction());
+                return networkReply;
             }
         }, false);
     }
