@@ -6,10 +6,17 @@ import com.venky.core.security.Crypt;
 import com.venky.core.util.ObjectUtil;
 import com.venky.swf.db.annotations.column.ui.mimes.MimeType;
 import com.venky.swf.db.model.CryptoKey;
+import com.venky.swf.db.model.application.Application;
+import com.venky.swf.db.model.application.ApplicationUtil;
+import com.venky.swf.db.model.reflection.ModelReflector;
 import com.venky.swf.integration.api.Call;
 import com.venky.swf.integration.api.HttpMethod;
 import com.venky.swf.integration.api.InputFormat;
 import com.venky.swf.routing.Config;
+import com.venky.swf.sql.Conjunction;
+import com.venky.swf.sql.Expression;
+import com.venky.swf.sql.Operator;
+import com.venky.swf.sql.Select;
 import in.succinct.beckn.BecknAware;
 import in.succinct.beckn.BecknObject;
 import in.succinct.beckn.BecknObjectWithId;
@@ -18,7 +25,6 @@ import in.succinct.beckn.Request;
 import in.succinct.beckn.Subscriber;
 import in.succinct.bpp.core.adaptor.api.NetworkApiAdaptor;
 import org.json.simple.JSONArray;
-import org.json.simple.JSONAware;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
@@ -110,11 +116,11 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
         return Duration.ofDays(365*10).toMillis();
     }
 
-    public CryptoKey getKey(String uniqueKeyId, String purpose){
-        return CryptoKey.find(uniqueKeyId,purpose);
+    public CryptoKey getKey(String alias, String purpose){
+        return CryptoKey.find(alias,purpose);
     }
     public void rotateKeys(Subscriber subscriber) {
-        CryptoKey existingKey = getKey(subscriber.getUniqueKeyId(),CryptoKey.PURPOSE_SIGNING);
+        CryptoKey existingKey = getKey(subscriber.getAlias(),CryptoKey.PURPOSE_SIGNING);
 
         if (existingKey.getRawRecord().isNewRecord() || existingKey.getUpdatedAt().getTime() + getKeyValidityMillis() <= System.currentTimeMillis() ){
             KeyPair signPair = Crypt.getInstance().generateKeyPair(Request.SIGNATURE_ALGO, Request.SIGNATURE_ALGO_KEY_LENGTH);
@@ -126,15 +132,16 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
                     existingKey.getAlias().substring(0,existingKey.getAlias().lastIndexOf('.')),
                     nextKeyNumber);
 
-            subscriber.setUniqueKeyId(nextKeyId);
+            subscriber.setAlias(nextKeyId);
+            subscriber.setUniqueKeyId(subscriber.getAlias());
 
-            CryptoKey signKey = getKey(subscriber.getUniqueKeyId(),CryptoKey.PURPOSE_SIGNING) ;//Create new key
+            CryptoKey signKey = getKey(subscriber.getAlias(),CryptoKey.PURPOSE_SIGNING) ;//Create new key
             signKey.setAlgorithm(Request.SIGNATURE_ALGO);
             signKey.setPrivateKey(Crypt.getInstance().getBase64Encoded(signPair.getPrivate()));
             signKey.setPublicKey(Crypt.getInstance().getBase64Encoded(signPair.getPublic()));
             signKey.save();
 
-            CryptoKey encryptionKey = getKey(subscriber.getUniqueKeyId(),CryptoKey.PURPOSE_ENCRYPTION);
+            CryptoKey encryptionKey = getKey(subscriber.getAlias(),CryptoKey.PURPOSE_ENCRYPTION);
             encryptionKey.setAlgorithm(Request.ENCRYPTION_ALGO);
             encryptionKey.setPrivateKey(Crypt.getInstance().getBase64Encoded(encPair.getPrivate()));
             encryptionKey.setPublicKey(Crypt.getInstance().getBase64Encoded(encPair.getPublic()));
@@ -146,8 +153,8 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
             throw new RuntimeException("Registry does not support domain " + subscriber.getDomain());
         }
         rotateKeys(subscriber);
-        CryptoKey skey = getKey(subscriber.getUniqueKeyId(),CryptoKey.PURPOSE_SIGNING);
-        CryptoKey ekey = getKey(subscriber.getUniqueKeyId(),CryptoKey.PURPOSE_ENCRYPTION);
+        CryptoKey skey = getKey(subscriber.getAlias(),CryptoKey.PURPOSE_SIGNING);
+        CryptoKey ekey = getKey(subscriber.getAlias(),CryptoKey.PURPOSE_ENCRYPTION);
 
         long validFrom = skey.getUpdatedAt().getTime();
         long validTo = (validFrom + getKeyValidityMillis());
@@ -216,7 +223,7 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
                 header("Accept", MimeType.APPLICATION_JSON.toString());
 
         call.header("Authorization", request.generateAuthorizationHeader(subscriber.getSubscriberId(),
-                Objects.requireNonNull(getKey(subscriber.getUniqueKeyId(),CryptoKey.PURPOSE_SIGNING)).getAlias()));
+                Objects.requireNonNull(getKey(subscriber.getAlias(),CryptoKey.PURPOSE_SIGNING)).getAlias()));
         JSONObject response = call.getResponseAsJson();
         Config.instance().getLogger(getClass().getName()).info("subscribe" + "-" + response.toString());
     }
