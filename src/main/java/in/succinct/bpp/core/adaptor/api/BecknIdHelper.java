@@ -1,6 +1,7 @@
 package in.succinct.bpp.core.adaptor.api;
 
 import com.venky.core.util.ObjectUtil;
+import com.venky.swf.plugins.beckn.messaging.Subscriber;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -33,7 +34,7 @@ public class BecknIdHelper {
         }
         return "-1";
     }
-    public static String getBecknId(String localUniqueId, String subscriber_id , Entity becknEntity){
+    public static String getBecknId(String localUniqueId, Subscriber subscriber , Entity becknEntity){
         StringBuilder builder = new StringBuilder();
         builder.append(getIdPrefix());
         if (!ObjectUtil.isVoid(localUniqueId)){
@@ -42,7 +43,7 @@ public class BecknIdHelper {
             builder.append(0);
         }
         builder.append("@");
-        builder.append(subscriber_id);
+        builder.append(subscriber.getAppId());
         if (becknEntity != null){
             builder.append(".").append(becknEntity);
         }

@@ -79,7 +79,7 @@ public abstract class CommerceAdaptor {
     protected Fulfillment getStorePickup(){
         Fulfillment cFulfillment = new Fulfillment();
         cFulfillment.setType(FulfillmentType.store_pickup);
-        cFulfillment.setId(BecknIdHelper.getBecknId("1",getSubscriber().getSubscriberId(), Entity.fulfillment));
+        cFulfillment.setId(BecknIdHelper.getBecknId("1",getSubscriber(), Entity.fulfillment));
         cFulfillment.setContact(getProviderConfig().getSupportContact());
         return cFulfillment;
     }
@@ -87,7 +87,7 @@ public abstract class CommerceAdaptor {
     protected Fulfillment getHomeDelivery(){
         Fulfillment cFulfillment = new Fulfillment();
         cFulfillment.setType(FulfillmentType.home_delivery);
-        cFulfillment.setId(BecknIdHelper.getBecknId("2",getSubscriber().getSubscriberId(), Entity.fulfillment));
+        cFulfillment.setId(BecknIdHelper.getBecknId("2",getSubscriber(), Entity.fulfillment));
         cFulfillment.setContact(getProviderConfig().getSupportContact());
         cFulfillment.setProviderName(getProviderConfig().getFulfillmentProviderName());
         cFulfillment.setTracking(false);
@@ -154,13 +154,13 @@ public abstract class CommerceAdaptor {
     public Payments getSupportedPaymentCollectionMethods(){
         Payments payments = new Payments();
         Payment payment = new Payment();
-        payment.setId(BecknIdHelper.getBecknId("1",getSubscriber().getSubscriberId(), Entity.payment));
+        payment.setId(BecknIdHelper.getBecknId("1",getSubscriber(), Entity.payment));
         payment.setType(PaymentType.ON_ORDER);
         payment.setCollectedBy(CollectedBy.BAP);
         payments.add(payment);
         if (getProviderConfig().isCodSupported()){
             payment = new Payment();
-            payment.setId(BecknIdHelper.getBecknId("2",getSubscriber().getSubscriberId(), Entity.payment));
+            payment.setId(BecknIdHelper.getBecknId("2",getSubscriber(), Entity.payment));
             payment.setType(PaymentType.POST_FULFILLMENT);
             payment.setCollectedBy(CollectedBy.BPP);
             payments.add(payment);
