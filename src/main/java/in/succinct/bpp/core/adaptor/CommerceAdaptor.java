@@ -127,14 +127,14 @@ public abstract class CommerceAdaptor {
         Provider provider = new Provider();
         provider.setDescriptor(new Descriptor());
         provider.getDescriptor().setName(config.getStoreName());
-        provider.getDescriptor().setCode(subscriber.getSubscriberId());
+        provider.getDescriptor().setCode(subscriber.getAppId());
         provider.getDescriptor().setShortDesc(config.getStoreName());
         provider.getDescriptor().setLongDesc(config.getStoreName());
         provider.getDescriptor().setImages(new Images());
         provider.getDescriptor().setSymbol(config.getLogo());
         provider.getDescriptor().getImages().add(config.getLogo());
 
-        provider.setId(getSubscriber().getSubscriberId()); // Provider is same as subscriber.!!
+        provider.setId(subscriber.getAppId()); // Provider is same as subscriber.!!
         provider.setTtl(120);
         if (!ObjectUtil.isVoid(config.getFssaiRegistrationNumber())) {
             provider.setFssaiLicenceNo(config.getFssaiRegistrationNumber());
