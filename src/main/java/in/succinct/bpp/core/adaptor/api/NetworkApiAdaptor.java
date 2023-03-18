@@ -25,11 +25,13 @@ import in.succinct.bpp.core.adaptor.CommerceAdaptor;
 import in.succinct.bpp.core.adaptor.NetworkAdaptor;
 import in.succinct.bpp.core.db.model.BecknOrderMeta;
 import in.succinct.bpp.core.tasks.BppActionTask;
+import io.grpc.LoadBalancer.SubchannelStateListener;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 
@@ -212,6 +214,12 @@ public abstract class NetworkApiAdaptor {
         }
         reply.getContext().setBppId(adaptor.getSubscriber().getSubscriberId());
         reply.getContext().setBppUri(adaptor.getSubscriber().getSubscriberUrl());
+        List<Subscriber> baps = getNetworkAdaptor().lookup(reply.getContext().getBapId(),true);
+        if (baps.isEmpty()){
+            log("Ignored", reply, new HashMap<>(),reply,reply.getContext().getAction());
+            return;
+        }
+
 
         Request networkReply = getNetworkAdaptor().getObjectCreator(adaptor.getSubscriber().getDomain()).create(Request.class);
         networkReply.update(reply);
