@@ -1,35 +1,41 @@
 package in.succinct.bpp.core.adaptor.api;
 
+import com.venky.core.util.ExceptionUtil;
 import com.venky.core.util.ObjectUtil;
 import com.venky.swf.db.Database;
 import com.venky.swf.db.JdbcTypeHelper.TypeConverter;
 import com.venky.swf.plugins.background.core.TaskManager;
 import com.venky.swf.routing.Config;
 import in.succinct.beckn.BecknAware;
+import in.succinct.beckn.BecknException;
 import in.succinct.beckn.CancellationReasons;
 import in.succinct.beckn.Catalog;
 import in.succinct.beckn.Context;
-import in.succinct.beckn.Error;
-import in.succinct.beckn.Error.Type;
 import in.succinct.beckn.FeedbackCategories;
 import in.succinct.beckn.Message;
 import in.succinct.beckn.Order;
+import in.succinct.beckn.Order.Status;
 import in.succinct.beckn.Provider;
 import in.succinct.beckn.Providers;
 import in.succinct.beckn.RatingCategories;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.ReturnReasons;
+import in.succinct.beckn.SellerException.ActionNotApplicable;
+import in.succinct.beckn.SellerException.GenericBusinessError;
+import in.succinct.beckn.SellerException.InvalidOrder;
+import in.succinct.beckn.SellerException.TrackingNotSupported;
+import in.succinct.beckn.State;
 import in.succinct.beckn.Subscriber;
 import in.succinct.beckn.Tracking;
 import in.succinct.bpp.core.adaptor.CommerceAdaptor;
 import in.succinct.bpp.core.adaptor.NetworkAdaptor;
 import in.succinct.bpp.core.db.model.BecknOrderMeta;
 import in.succinct.bpp.core.tasks.BppActionTask;
-import io.grpc.LoadBalancer.SubchannelStateListener;
 import org.json.simple.JSONObject;
-import org.json.simple.JSONValue;
 
 import java.lang.reflect.Method;
+import java.sql.Timestamp;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,17 +57,37 @@ public abstract class NetworkApiAdaptor {
         request.setObjectCreator(getNetworkAdaptor().getObjectCreator(adaptor.getSubscriber().getDomain()));
         try {
             createReplyContext(adaptor.getSubscriber(),request,response);
+
+            BecknOrderMeta meta = adaptor.getOrderMeta(request.getContext().getTransactionId());
+            meta.setContextJson(request.getContext().toString());
+
             Method method = getClass().getMethod(request.getContext().getAction(), CommerceAdaptor.class, Request.class, Request.class);
             method.invoke(this, adaptor,request, response);
+            Order order = response.getMessage().getOrder();
+            if (order != null){
+                meta.setOrderJson(order.toString());
+                Status status = order.getState();
+                if (status != null){
+                    meta.setStatusReachedAt(status,new Date(System.currentTimeMillis()));
+                }
+                if (!ObjectUtil.isVoid(order.getId())){
+                    meta.setBapOrderId(order.getId());
+                }
+            }
             log("ToApplication",request,headers,response,"/" + request.getContext().getAction());
             response.getContext().setBppId(adaptor.getSubscriber().getSubscriberId());
             response.getContext().setBppUri(adaptor.getSubscriber().getSubscriberUrl());
+            meta.save();
+        }catch (BecknException ex){
+            throw ex;
         }catch (Exception ex){
-            throw new RuntimeException(ex);
+            BecknException e = new GenericBusinessError(ExceptionUtil.getRootCause(ex).getMessage());
+            throw e;
         }
     }
     public abstract void search(CommerceAdaptor adaptor,Request request, Request reply);
 
+    //Called from serch adaptor to cache the complete catalog!
     public void _search(CommerceAdaptor adaptor, Request reply) {
         Message message = new Message();
         reply.setMessage(message);
@@ -93,17 +119,12 @@ public abstract class NetworkApiAdaptor {
     public void confirm(CommerceAdaptor adaptor, Request request, Request reply) {
         Order order = request.getMessage().getOrder();
         if (order == null){
-            throw new RuntimeException("No Order passed");
+            throw new InvalidOrder();
         }
         Message message = new Message(); reply.setMessage(message);
         Order draftOrder = adaptor.initializeDraftOrder(request); // RECompute
 
-        BecknOrderMeta orderMeta = Database.getTable(BecknOrderMeta.class).newRecord();
-        orderMeta.setBecknTransactionId(request.getContext().getTransactionId());
-        orderMeta = Database.getTable(BecknOrderMeta.class).getRefreshed(orderMeta);
-
-
-        Order confirmedOrder = adaptor.confirmDraftOrder(draftOrder,orderMeta);
+        Order confirmedOrder = adaptor.confirmDraftOrder(draftOrder);
         message.setOrder(confirmedOrder);
     }
 
@@ -118,7 +139,7 @@ public abstract class NetworkApiAdaptor {
             }
         }
         if (order == null){
-            throw new RuntimeException("No Order passed");
+            throw new InvalidOrder();
         }
         String trackUrl  = adaptor.getTrackingUrl(order);
         Message message = new Message();
@@ -128,9 +149,7 @@ public abstract class NetworkApiAdaptor {
             message.setTracking(new Tracking());
             message.getTracking().setUrl(trackUrl);
         }else {
-            reply.setError(new Error());
-            reply.getError().setType(Type.DOMAIN_ERROR);
-            reply.getError().setMessage("No information available!");
+            throw new TrackingNotSupported();
         }
     }
 
@@ -146,7 +165,7 @@ public abstract class NetworkApiAdaptor {
             }
         }
         if (order == null){
-            throw new RuntimeException("No Order passed");
+            throw new InvalidOrder();
         }
         Order cancelledOrder = adaptor.cancel(order);
         Message message = new Message(); reply.setMessage(message);
@@ -154,15 +173,20 @@ public abstract class NetworkApiAdaptor {
     }
 
     public void update(CommerceAdaptor adaptor, Request request, Request reply) {
-        throw new RuntimeException("Orders cannot be updated. Please cancel and rebook your orders!");
+        throw new ActionNotApplicable("Orders cannot be updated. Please cancel and rebook your orders!");
     }
 
     public void status(CommerceAdaptor adaptor, Request request, Request reply) {
         Order order = request.getMessage().getOrder();
         if (order == null){
-            order = new Order();
-            order.setId(request.getMessage().get("order_id"));
-            request.getMessage().setOrder(order);
+            if (request.getMessage().getOrderId() != null){
+                order = new Order();
+                order.setId(request.getMessage().getOrderId());
+                request.getMessage().setOrder(order);
+            }
+        }
+        if (order == null){
+            throw new InvalidOrder();
         }
         reply.setMessage(new Message());
         Order current = adaptor.getStatus(order);
@@ -223,9 +247,11 @@ public abstract class NetworkApiAdaptor {
 
         Request networkReply = getNetworkAdaptor().getObjectCreator(adaptor.getSubscriber().getDomain()).create(Request.class);
         networkReply.update(reply);
+        Map<String,Object> attributes = Database.getInstance().getCurrentTransaction().getAttributes();
         TaskManager.instance().executeAsync(new BppActionTask(this,adaptor, networkReply, new HashMap<>()) {
             @Override
             public Request generateCallBackRequest() {
+                Database.getInstance().getCurrentTransaction().setAttributes(attributes);
                 registerSignatureHeaders("Authorization");
                 log("ToApplication", networkReply, getHeaders(), networkReply, "/" + networkReply.getContext().getAction());
                 return networkReply;

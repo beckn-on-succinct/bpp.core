@@ -7,8 +7,9 @@ import com.venky.swf.db.annotations.column.UNIQUE_KEY;
 import com.venky.swf.db.annotations.column.defaulting.StandardDefault;
 import com.venky.swf.db.annotations.column.indexing.Index;
 import com.venky.swf.db.model.Model;
-import in.succinct.beckn.Payment;
-import in.succinct.beckn.Payment.CommissionType;
+import in.succinct.beckn.Order.Status;
+
+import java.util.Date;
 
 public interface BecknOrderMeta extends Model {
     @UNIQUE_KEY("bt")
@@ -40,6 +41,10 @@ public interface BecknOrderMeta extends Model {
     public void setOrderJson(String orderJson);
 
 
+    @COLUMN_SIZE(2048*4)
+    @IS_NULLABLE
+    public String getContextJson();
+    public void setContextJson(String contextJson);
 
     @COLUMN_DEF(StandardDefault.ZERO)
     public double getBuyerAppFinderFeeAmount();
@@ -48,4 +53,14 @@ public interface BecknOrderMeta extends Model {
     @COLUMN_DEF(value = StandardDefault.SOME_VALUE,args = "Percent")
     public String getBuyerAppFinderFeeType();
     public void setBuyerAppFinderFeeType(String buyerAppFinderFeeType);
+
+    @COLUMN_SIZE(2048*4)
+    @IS_NULLABLE
+    public String getStatusUpdatedAtJson();
+    public void setStatusUpdatedAtJson(String statusUpdatedAtJson);
+
+
+    public Date getStatusReachedAt(Status status);
+    public void setStatusReachedAt(Status status, Date at);
+
 }

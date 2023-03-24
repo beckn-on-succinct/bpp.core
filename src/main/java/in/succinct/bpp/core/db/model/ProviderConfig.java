@@ -4,6 +4,7 @@ import com.venky.geo.GeoCoder;
 import com.venky.geo.GeoCoordinate;
 import com.venky.swf.plugins.collab.db.model.config.PinCode;
 import com.venky.swf.routing.Config;
+import in.succinct.beckn.BecknException;
 import in.succinct.beckn.BecknObject;
 import in.succinct.beckn.BecknObjects;
 import in.succinct.beckn.Category;
@@ -11,6 +12,10 @@ import in.succinct.beckn.Contact;
 import in.succinct.beckn.Fulfillment.FulfillmentType;
 import in.succinct.beckn.FulfillmentStop;
 import in.succinct.beckn.Location;
+import in.succinct.beckn.SellerException;
+import in.succinct.beckn.SellerException.DistanceServiceabilityError;
+import in.succinct.beckn.SellerException.DropoffLocationServiceabilityError;
+import in.succinct.beckn.SellerException.GenericBusinessError;
 import in.succinct.beckn.Time;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -159,6 +164,15 @@ public class ProviderConfig extends BecknObject {
         public void setCharges(double charges){
             set("charges",charges);
         }
+
+        BecknException ex;
+        public void setReason(BecknException ex){
+            this.ex = ex;
+        }
+        public BecknException getReason(){
+            return ex;
+        }
+
     }
 
 
@@ -167,6 +181,7 @@ public class ProviderConfig extends BecknObject {
 
         Serviceability serviceability = new Serviceability();
         serviceability.setServiceable(false);
+        serviceability.setReason(new DropoffLocationServiceabilityError());
 
         if (end == null){
             serviceability.setServiceable(false);
@@ -202,6 +217,9 @@ public class ProviderConfig extends BecknObject {
                             serviceability.setServiceable(true);
                             serviceability.setCharges(rule.getFixedRate() + rule.getRatePerKm() * distance);
                         }
+                    }
+                    if (!serviceability.isServiceable()){
+                        serviceability.setReason(new DistanceServiceabilityError());
                     }
                 }
             }
