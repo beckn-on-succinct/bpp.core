@@ -60,6 +60,11 @@ public abstract class NetworkApiAdaptor {
 
             BecknOrderMeta meta = adaptor.getOrderMeta(request.getContext().getTransactionId());
             meta.setContextJson(request.getContext().toString());
+            if (ObjectUtil.isVoid(meta.getNetworkId())) {
+                meta.setNetworkId(getNetworkAdaptor().getId());
+            }else if (!ObjectUtil.equals(meta.getNetworkId(),getNetworkAdaptor().getId())){
+                return; //Do nothing.
+            }
 
             Method method = getClass().getMethod(request.getContext().getAction(), CommerceAdaptor.class, Request.class, Request.class);
             method.invoke(this, adaptor,request, response);
@@ -236,13 +241,19 @@ public abstract class NetworkApiAdaptor {
         if (reply.getContext() == null){
             throw new RuntimeException("Create Context before sending callback");
         }
-        reply.getContext().setBppId(adaptor.getSubscriber().getSubscriberId());
-        reply.getContext().setBppUri(adaptor.getSubscriber().getSubscriberUrl());
-        List<Subscriber> baps = getNetworkAdaptor().lookup(reply.getContext().getBapId(),true);
-        if (baps.isEmpty()){
+
+        BecknOrderMeta meta = adaptor.getOrderMeta(reply.getContext().getTransactionId());
+        if (ObjectUtil.isVoid(meta.getNetworkId())){
+            meta.setNetworkId(getNetworkAdaptor().getId());
+            meta.save();
+        }
+
+        if (!ObjectUtil.equals(meta.getNetworkId(),getNetworkAdaptor().getId())){
             log("Ignored", reply, new HashMap<>(),reply,reply.getContext().getAction());
             return;
         }
+        reply.getContext().setBppId(adaptor.getSubscriber().getSubscriberId());
+        reply.getContext().setBppUri(adaptor.getSubscriber().getSubscriberUrl());
 
 
         Request networkReply = getNetworkAdaptor().getObjectCreator(adaptor.getSubscriber().getDomain()).create(Request.class);

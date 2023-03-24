@@ -17,6 +17,8 @@ public interface BecknOrderMeta extends Model {
     public String getBecknTransactionId();
     public void setBecknTransactionId(String becknTransactionId);
 
+    public String getNetworkId();
+    public void setNetworkId(String networkId);
 
 
     @Index
