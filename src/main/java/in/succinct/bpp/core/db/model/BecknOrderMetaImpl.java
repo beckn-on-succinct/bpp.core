@@ -29,7 +29,7 @@ public class BecknOrderMetaImpl extends ModelImpl<BecknOrderMeta> {
         Date statusReachedAt = sa.getTimestamp(status.toString());
         if (statusReachedAt == null || at.before(statusReachedAt)) {
             sa.set(status.toString(), at, BecknObject.TIMESTAMP_FORMAT_WITH_MILLS);
-            getProxy().setStatusUpdatedAtJson(sa.toString());
+            getProxy().setStatusUpdatedAtJson(sa.getInner().toString());
         }
     }
 }

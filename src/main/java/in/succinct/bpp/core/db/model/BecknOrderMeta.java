@@ -21,10 +21,6 @@ public interface BecknOrderMeta extends Model {
     public void setNetworkId(String networkId);
 
 
-    @Index
-    @UNIQUE_KEY("edo")
-    public String getECommerceDraftOrderId();
-    public void setECommerceDraftOrderId(String eCommerceOrderId);
 
 
     @Index
