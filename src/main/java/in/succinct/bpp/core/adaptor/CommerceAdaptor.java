@@ -1,11 +1,9 @@
 package in.succinct.bpp.core.adaptor;
 
 import com.venky.core.util.ObjectUtil;
-import com.venky.swf.db.Database;
 import com.venky.swf.db.model.application.Application;
 import com.venky.swf.db.model.application.ApplicationUtil;
 import com.venky.swf.plugins.beckn.messaging.Subscriber;
-import in.succinct.beckn.BecknException;
 import in.succinct.beckn.Categories;
 import in.succinct.beckn.Context;
 import in.succinct.beckn.Descriptor;
@@ -24,22 +22,17 @@ import in.succinct.beckn.Payment.PaymentType;
 import in.succinct.beckn.Payments;
 import in.succinct.beckn.Provider;
 import in.succinct.beckn.Request;
-import in.succinct.beckn.SellerException;
-import in.succinct.beckn.SellerException.GenericBusinessError;
 import in.succinct.beckn.SellerException.InvalidRequestError;
 import in.succinct.beckn.Tag;
 import in.succinct.beckn.Tag.List;
 import in.succinct.bpp.core.adaptor.api.BecknIdHelper;
 import in.succinct.bpp.core.adaptor.api.BecknIdHelper.Entity;
-import in.succinct.bpp.core.db.model.BecknOrderMeta;
 import in.succinct.bpp.core.db.model.ProviderConfig;
 import in.succinct.bpp.core.db.model.ProviderConfig.DeliveryRules;
 import org.json.simple.JSONArray;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 public abstract class CommerceAdaptor {
     private final Subscriber subscriber;
@@ -55,53 +48,6 @@ public abstract class CommerceAdaptor {
         providerConfig = new ProviderConfig(this.configuration.get(key));
     }
 
-    private Map<String,BecknOrderMeta> getOrderMetaMap(){
-        Map<String,BecknOrderMeta> map = Database.getInstance().getContext(BecknOrderMeta.class.getName());
-
-        if (map == null) {
-            map = new HashMap<>();
-            Database.getInstance().setContext(BecknOrderMeta.class.getName(), map);
-        }
-        return map;
-    }
-
-    public String getCurrentBecknTransactionId(){
-        Set<String> transactionIds = getBecknTransactionIds();
-        if (transactionIds.size() == 1){
-            return transactionIds.iterator().next();
-        }
-        return null;
-    }
-    public BecknOrderMeta getOrderMeta(){
-        String currentTransactionId = getCurrentBecknTransactionId();
-
-        return getOrderMeta(currentTransactionId);
-    }
-
-    public BecknOrderMeta getOrderMeta(String transactionId){
-        if (transactionId == null){
-            throw new GenericBusinessError("Unable to find the transaction");
-        }
-        Map<String,BecknOrderMeta> map = getOrderMetaMap();
-        BecknOrderMeta meta = map.get(transactionId);
-        if (meta == null){
-            meta = Database.getTable(BecknOrderMeta.class).newRecord();
-            meta.setBecknTransactionId(transactionId);
-            meta = Database.getTable(BecknOrderMeta.class).getRefreshed(meta);
-
-            if (meta.getRawRecord().isNewRecord()){
-                meta.setOrderJson("{}");
-                meta.setStatusUpdatedAtJson("{}");
-            }
-            map.put(transactionId,meta);
-        }
-        return meta;
-    }
-
-    public Set<String> getBecknTransactionIds(){
-        Map<String,BecknOrderMeta> map = getOrderMetaMap();
-        return map.keySet();
-    }
 
     public ProviderConfig getProviderConfig() {
         return providerConfig;
@@ -231,7 +177,7 @@ public abstract class CommerceAdaptor {
             map.put(f.getType(),f);
         }
 
-        
+
 
         Fulfillment fulfillment = order.getFulfillment();
 

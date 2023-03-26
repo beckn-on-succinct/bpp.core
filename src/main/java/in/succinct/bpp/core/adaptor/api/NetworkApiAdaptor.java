@@ -14,7 +14,6 @@ import in.succinct.beckn.Context;
 import in.succinct.beckn.FeedbackCategories;
 import in.succinct.beckn.Message;
 import in.succinct.beckn.Order;
-import in.succinct.beckn.Order.Status;
 import in.succinct.beckn.Provider;
 import in.succinct.beckn.Providers;
 import in.succinct.beckn.RatingCategories;
@@ -24,20 +23,16 @@ import in.succinct.beckn.SellerException.ActionNotApplicable;
 import in.succinct.beckn.SellerException.GenericBusinessError;
 import in.succinct.beckn.SellerException.InvalidOrder;
 import in.succinct.beckn.SellerException.TrackingNotSupported;
-import in.succinct.beckn.State;
 import in.succinct.beckn.Subscriber;
 import in.succinct.beckn.Tracking;
 import in.succinct.bpp.core.adaptor.CommerceAdaptor;
 import in.succinct.bpp.core.adaptor.NetworkAdaptor;
-import in.succinct.bpp.core.db.model.BecknOrderMeta;
+import in.succinct.bpp.core.db.model.LocalOrderSynchronizer;
 import in.succinct.bpp.core.tasks.BppActionTask;
 import org.json.simple.JSONObject;
 
 import java.lang.reflect.Method;
-import java.sql.Timestamp;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 
@@ -58,31 +53,16 @@ public abstract class NetworkApiAdaptor {
         try {
             createReplyContext(adaptor.getSubscriber(),request,response);
 
-            BecknOrderMeta meta = adaptor.getOrderMeta(request.getContext().getTransactionId());
-            meta.setContextJson(request.getContext().toString());
-            if (ObjectUtil.isVoid(meta.getNetworkId())) {
-                meta.setNetworkId(getNetworkAdaptor().getId());
-            }else if (!ObjectUtil.equals(meta.getNetworkId(),getNetworkAdaptor().getId())){
-                return; //Do nothing.
-            }
+            LocalOrderSynchronizer.getInstance().sync(request,getNetworkAdaptor(),adaptor.getSubscriber(),false);
 
             Method method = getClass().getMethod(request.getContext().getAction(), CommerceAdaptor.class, Request.class, Request.class);
             method.invoke(this, adaptor,request, response);
-            Order order = response.getMessage().getOrder();
-            if (order != null){
-                meta.setOrderJson(order.toString());
-                Status status = order.getState();
-                if (status != null){
-                    meta.setStatusReachedAt(status,new Date(System.currentTimeMillis()));
-                }
-                if (!ObjectUtil.isVoid(order.getId())){
-                    meta.setBapOrderId(order.getId());
-                }
-            }
+
+            LocalOrderSynchronizer.getInstance().sync(response,getNetworkAdaptor(),adaptor.getSubscriber(),true);
+
             log("ToApplication",request,headers,response,"/" + request.getContext().getAction());
             response.getContext().setBppId(adaptor.getSubscriber().getSubscriberId());
             response.getContext().setBppUri(adaptor.getSubscriber().getSubscriberUrl());
-            meta.save();
         }catch (BecknException ex){
             throw ex;
         }catch (Exception ex){
@@ -128,6 +108,8 @@ public abstract class NetworkApiAdaptor {
         }
         Message message = new Message(); reply.setMessage(message);
         Order draftOrder = adaptor.initializeDraftOrder(request); // RECompute
+        message.setOrder(draftOrder); //Temporarily setit for synchronization purposes
+        LocalOrderSynchronizer.getInstance().sync(request,getNetworkAdaptor(),adaptor.getSubscriber(),false);
 
         Order confirmedOrder = adaptor.confirmDraftOrder(draftOrder);
         message.setOrder(confirmedOrder);
@@ -137,12 +119,6 @@ public abstract class NetworkApiAdaptor {
     public void track(CommerceAdaptor adaptor, Request request, Request reply) {
         /* Take track message and fill response with on_track message */
         Order order = request.getMessage().getOrder();
-        if (order == null){
-            if (request.getMessage().getOrderId() != null){
-                order = new Order();
-                order.setId(request.getMessage().getOrderId());
-            }
-        }
         if (order == null){
             throw new InvalidOrder();
         }
@@ -242,16 +218,8 @@ public abstract class NetworkApiAdaptor {
             throw new RuntimeException("Create Context before sending callback");
         }
 
-        BecknOrderMeta meta = adaptor.getOrderMeta(reply.getContext().getTransactionId());
-        if (ObjectUtil.isVoid(meta.getNetworkId())){
-            meta.setNetworkId(getNetworkAdaptor().getId());
-            meta.save();
-        }
+        LocalOrderSynchronizer.getInstance().sync(reply,getNetworkAdaptor(),adaptor.getSubscriber(),true);
 
-        if (!ObjectUtil.equals(meta.getNetworkId(),getNetworkAdaptor().getId())){
-            log("Ignored", reply, new HashMap<>(),reply,reply.getContext().getAction());
-            return;
-        }
         reply.getContext().setBppId(adaptor.getSubscriber().getSubscriberId());
         reply.getContext().setBppUri(adaptor.getSubscriber().getSubscriberUrl());
 
