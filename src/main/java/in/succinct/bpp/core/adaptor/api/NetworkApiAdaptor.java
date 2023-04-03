@@ -67,6 +67,7 @@ public abstract class NetworkApiAdaptor {
             throw ex;
         }catch (Exception ex){
             BecknException e = new GenericBusinessError(ExceptionUtil.getRootCause(ex).getMessage());
+            Config.instance().getLogger(getClass().getName()).log(Level.WARNING,e.getMessage(),ex);
             throw e;
         }
     }
@@ -109,7 +110,7 @@ public abstract class NetworkApiAdaptor {
         Message message = new Message(); reply.setMessage(message);
         Order draftOrder = adaptor.initializeDraftOrder(request); // RECompute
         message.setOrder(draftOrder); //Temporarily setit for synchronization purposes
-        LocalOrderSynchronizer.getInstance().sync(request,getNetworkAdaptor(),adaptor.getSubscriber(),false);
+        LocalOrderSynchronizer.getInstance().sync(reply,getNetworkAdaptor(),adaptor.getSubscriber(),false);
 
         Order confirmedOrder = adaptor.confirmDraftOrder(draftOrder);
         message.setOrder(confirmedOrder);

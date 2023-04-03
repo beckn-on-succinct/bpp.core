@@ -7,6 +7,7 @@ import com.venky.swf.db.annotations.column.UNIQUE_KEY;
 import com.venky.swf.db.annotations.column.defaulting.StandardDefault;
 import com.venky.swf.db.annotations.column.indexing.Index;
 import com.venky.swf.db.model.Model;
+import in.succinct.beckn.Fulfillment.FulfillmentStatus;
 import in.succinct.beckn.Order.Status;
 
 import java.util.Date;
@@ -27,6 +28,13 @@ public interface BecknOrderMeta extends Model {
     @UNIQUE_KEY("bap_order")
     public String getBapOrderId();
     public void setBapOrderId(String eCommerceOrderId);
+
+
+    @Index
+    @UNIQUE_KEY("do")
+    @IS_NULLABLE
+    public String getECommerceDraftOrderId();
+    public void setECommerceDraftOrderId(String eCommerceDraftOrderId);
 
     @Index
     @UNIQUE_KEY("eo")
@@ -60,5 +68,8 @@ public interface BecknOrderMeta extends Model {
 
     public Date getStatusReachedAt(Status status);
     public void setStatusReachedAt(Status status, Date at);
+
+    public Date getFulfillmentStatusReachedAt(FulfillmentStatus status);
+    public void setFulfillmentStatusReachedAt(FulfillmentStatus status, Date at);
 
 }

@@ -203,6 +203,8 @@ public class ProviderConfig extends BecknObject {
                             pinCode.setLat(endGps.getLat());
                             pinCode.setLng(endGps.getLng());
                             pinCode.save(); //Lazy save
+                        }else {
+                            endGps = new GeoCoordinate(pinCode.getLat(),pinCode.getLng());
                         }
                     }else {
                         endGps = new GeoCoordinate(new GeoCoder().getLocation(endLocation.getAddress().flatten() , Config.instance().getGeoProviderParams()));

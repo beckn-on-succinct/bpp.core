@@ -5,23 +5,21 @@ import com.venky.swf.db.Database;
 import com.venky.swf.plugins.beckn.messaging.Subscriber;
 import in.succinct.beckn.Context;
 import in.succinct.beckn.Fulfillment;
+import in.succinct.beckn.Fulfillment.FulfillmentStatus;
 import in.succinct.beckn.Fulfillment.FulfillmentType;
 import in.succinct.beckn.Intent;
-import in.succinct.beckn.Location;
 import in.succinct.beckn.Locations;
 import in.succinct.beckn.Order;
 import in.succinct.beckn.Order.Status;
 import in.succinct.beckn.Payment;
 import in.succinct.beckn.Payment.CommissionType;
 import in.succinct.beckn.Request;
-import in.succinct.beckn.SellerException;
 import in.succinct.beckn.SellerException.GenericBusinessError;
 import in.succinct.beckn.SellerException.InvalidOrder;
 import in.succinct.beckn.SellerException.InvalidRequestError;
 import in.succinct.bpp.core.adaptor.NetworkAdaptor;
 import in.succinct.bpp.core.adaptor.api.BecknIdHelper;
 import in.succinct.bpp.core.adaptor.api.BecknIdHelper.Entity;
-import org.json.simple.JSONArray;
 
 import java.util.Date;
 import java.util.HashMap;
@@ -106,6 +104,9 @@ public class LocalOrderSynchronizer {
     public String getLocalOrderId(String transactionId){
         return getOrderMeta(transactionId).getECommerceOrderId();
     }
+    public String getLocalDraftOrderId(String transactionId){
+        return getOrderMeta(transactionId).getECommerceDraftOrderId();
+    }
 
     public String getLocalOrderId(Order order){
         if (!ObjectUtil.isVoid(order.getId())) {
@@ -117,7 +118,22 @@ public class LocalOrderSynchronizer {
         }
         return getOrderMeta().getECommerceOrderId();
     }
-
+    public String getLocalDraftOrderId(Order order){
+        if (!ObjectUtil.isVoid(order.getId())) {
+            for (BecknOrderMeta value : getOrderMetaMap().values()) {
+                if (ObjectUtil.equals(value.getBapOrderId(), order.getId())) {
+                    return value.getECommerceDraftOrderId();
+                }
+            }
+        }
+        return getOrderMeta().getECommerceDraftOrderId();
+    }
+    public void setLocalOrderId(String transactionId,String localOrderid){
+        getOrderMeta(transactionId).setECommerceOrderId(localOrderid);
+    }
+    public void setLocalDraftOrderId(String transactionId,String localDraftOrderid){
+        getOrderMeta(transactionId).setECommerceDraftOrderId(localDraftOrderid);
+    }
     public Order getLastKnownOrder(String transactionId){
         return new Order(getOrderMeta(transactionId).getOrderJson());
     }
@@ -147,7 +163,7 @@ public class LocalOrderSynchronizer {
             }
         }else {
             Order order = request.getMessage().getOrder();
-            if (order == null && ObjectUtil.isVoid(request.getMessage().getOrderId())){
+            if (order == null && !ObjectUtil.isVoid(request.getMessage().getOrderId())){
                 order = new Order();
                 order.setId(request.getMessage().getOrderId());
             }
@@ -166,18 +182,25 @@ public class LocalOrderSynchronizer {
                     fixFulfillment(request.getContext(),order);
                     fixLocation(order);
 
-                    /*
-                    TODO Not needed remove later.
-                    lastKnown.setFulfillments(order.getFulfillments());
                     lastKnown.setProviderLocation(order.getProviderLocation());
-                    lastKnown.setItems(order.getItems());
-                    lastKnown.setFulfillment(order.getFulfillment());
-                    if (lastKnown.getFulfillments().size() > 0) {
-                        lastKnown.setFulfillment(lastKnown.getFulfillments().get(0));
-                    }
                     lastKnown.setBilling(order.getBilling());
-                    lastKnown.setPayment(order.getPayment());
-                    */
+                    if (action.equals("cancel")){
+                        if (order.getCancellation() !=  null ){
+                            lastKnown.setCancellation(order.getCancellation());
+                        }
+                    }
+
+                    if (order.getFulfillment() != null) {
+                        lastKnown.setFulfillment(new Fulfillment());
+                        lastKnown.getFulfillment().update(order.getFulfillment());
+                    }
+                    if (order.getPayment() != null){
+                        lastKnown.setPayment(new Payment());
+                        lastKnown.getPayment().update(order.getPayment());
+                    }
+
+                    meta.setOrderJson(lastKnown.getInner().toString());
+
                     if (order.getPayment() != null ){
                         if (order.getPayment().getBuyerAppFinderFeeType() != null) {
                             meta.setBuyerAppFinderFeeType(order.getPayment().getBuyerAppFinderFeeType().toString());
@@ -193,13 +216,17 @@ public class LocalOrderSynchronizer {
                     if (order.getId() == null) {
                         if (meta.getBapOrderId() != null) {
                             order.setId(meta.getBapOrderId());
-                        } else if (meta.getECommerceOrderId() != null) {
+                        } else if (meta.getECommerceOrderId() != null && action.equals("on_confirm")) {
                             order.setId(BecknIdHelper.getBecknId(meta.getECommerceOrderId(), subscriber, Entity.order));
+                            meta.setBapOrderId(order.getId());
                         }
                     }
                     if (order.getPayment() != null && meta.getBuyerAppFinderFeeType() != null){
                         order.getPayment().setBuyerAppFinderFeeAmount(meta.getBuyerAppFinderFeeAmount());
                         order.getPayment().setBuyerAppFinderFeeType(CommissionType.valueOf(meta.getBuyerAppFinderFeeType()));
+                    }
+                    if (order.getState() == Status.Cancelled && order.getCancellation() == null && lastKnown.getCancellation() != null){
+                        order.setCancellation(lastKnown.getCancellation());
                     }
 
                     meta.setOrderJson(order.getInner().toString());
@@ -207,6 +234,15 @@ public class LocalOrderSynchronizer {
                     if (status != null){
                         meta.setStatusReachedAt(status,new Date(System.currentTimeMillis()));
                     }
+                    Fulfillment fulfillment = order.getFulfillment();
+                    if (fulfillment != null) {
+                        FulfillmentStatus fulfillmentStatus = fulfillment.getFulfillmentStatus();
+                        if (fulfillmentStatus != null){
+                            meta.setFulfillmentStatusReachedAt(fulfillmentStatus,new Date(System.currentTimeMillis()));
+                        }
+                    }
+
+
                 }
             }
         }
@@ -257,7 +293,12 @@ public class LocalOrderSynchronizer {
 
         order.setFulfillments(new in.succinct.beckn.Fulfillments());
         if (fulfillment != null){
-            fulfillment.setId("fulfillment/"+fulfillment.getType()+"/"+context.getTransactionId());
+            if (fulfillment.getType() == null){
+                fulfillment.setType(FulfillmentType.home_delivery);
+            }
+            if (ObjectUtil.isVoid(fulfillment.getId())){
+                fulfillment.setId("fulfillment/"+ fulfillment.getType()+"/"+context.getTransactionId());
+            }
             order.getFulfillments().add(fulfillment);
         }
     }

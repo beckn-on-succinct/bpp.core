@@ -2,6 +2,7 @@ package in.succinct.bpp.core.db.model;
 
 import com.venky.swf.db.table.ModelImpl;
 import in.succinct.beckn.BecknObject;
+import in.succinct.beckn.Fulfillment.FulfillmentStatus;
 import in.succinct.beckn.Order.Status;
 
 import java.util.Date;
@@ -32,4 +33,21 @@ public class BecknOrderMetaImpl extends ModelImpl<BecknOrderMeta> {
             getProxy().setStatusUpdatedAtJson(sa.getInner().toString());
         }
     }
+
+    public Date getFulfillmentStatusReachedAt(FulfillmentStatus status){
+        BecknObject sa = getStatusAudit();
+        BecknObject fsa = sa.get(BecknObject.class,"fulfillmentStatusAudit",true);
+        return fsa.getTimestamp(status.toString());
+    }
+    public void setFulfillmentStatusReachedAt(FulfillmentStatus status, Date at){
+        BecknObject sa = getStatusAudit();
+        BecknObject fsa = sa.get(BecknObject.class,"fulfillmentStatusAudit",true);
+
+        Date statusReachedAt = fsa.getTimestamp(status.toString());
+        if (statusReachedAt == null || at.before(statusReachedAt)) {
+            fsa.set(status.toString(), at, BecknObject.TIMESTAMP_FORMAT_WITH_MILLS);
+            getProxy().setStatusUpdatedAtJson(sa.getInner().toString());
+        }
+    }
+
 }
