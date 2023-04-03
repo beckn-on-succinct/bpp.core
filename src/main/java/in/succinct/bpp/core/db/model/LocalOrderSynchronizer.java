@@ -251,6 +251,9 @@ public class LocalOrderSynchronizer {
 
     }
     public void fixLocation(Order order){
+        if (order.getProvider() == null){
+            return;
+        }
 
         Locations locations = order.getProvider().getLocations();
         if (locations == null){
