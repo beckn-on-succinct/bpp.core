@@ -17,12 +17,14 @@ import in.succinct.beckn.Request;
 import in.succinct.beckn.SellerException.GenericBusinessError;
 import in.succinct.beckn.SellerException.InvalidOrder;
 import in.succinct.beckn.SellerException.InvalidRequestError;
+import in.succinct.bpp.core.adaptor.FulfillmentStatusAdaptor.FulfillmentStatusAudit;
 import in.succinct.bpp.core.adaptor.NetworkAdaptor;
 import in.succinct.bpp.core.adaptor.api.BecknIdHelper;
 import in.succinct.bpp.core.adaptor.api.BecknIdHelper.Entity;
 
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -250,6 +252,14 @@ public class LocalOrderSynchronizer {
 
 
     }
+
+    public void setFulfillmentStatusReachedAt(String transactionId, FulfillmentStatus status, Date at,boolean persist){
+        BecknOrderMeta meta = getOrderMeta(transactionId);
+        meta.setFulfillmentStatusReachedAt(status,at);
+        if (persist){
+            meta.save();
+        }
+    }
     public void fixLocation(Order order){
         if (order.getProvider() == null){
             return;
@@ -304,5 +314,27 @@ public class LocalOrderSynchronizer {
             }
             order.getFulfillments().add(fulfillment);
         }
+    }
+
+    public List<FulfillmentStatusAudit> getFulfillmentStatusAudit(String transactionId){
+        return getOrderMeta(transactionId).getStatusAudits();
+    }
+
+    public String getTrackingUrl(Order order){
+        if (!ObjectUtil.isVoid(order.getId())) {
+            for (BecknOrderMeta value : getOrderMetaMap().values()) {
+                if (ObjectUtil.equals(value.getBapOrderId(), order.getId())) {
+                    return value.getTrackingUrl();
+                }
+            }
+        }
+        return getOrderMeta().getTrackingUrl();
+
+    }
+    public String getTrackingUrl(String transactionId){
+        return getOrderMeta(transactionId).getTrackingUrl();
+    }
+    public void setTrackingUrl(String transactionId,String trackingUrl){
+        getOrderMeta(transactionId).setTrackingUrl(trackingUrl);
     }
 }

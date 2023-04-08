@@ -24,7 +24,7 @@ import in.succinct.beckn.Provider;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.SellerException.InvalidRequestError;
 import in.succinct.beckn.Tag;
-import in.succinct.beckn.Tag.List;
+import in.succinct.bpp.core.adaptor.FulfillmentStatusAdaptor.FulfillmentStatusAudit;
 import in.succinct.bpp.core.adaptor.api.BecknIdHelper;
 import in.succinct.bpp.core.adaptor.api.BecknIdHelper.Entity;
 import in.succinct.bpp.core.db.model.ProviderConfig;
@@ -32,6 +32,7 @@ import in.succinct.bpp.core.db.model.ProviderConfig.DeliveryRules;
 import org.json.simple.JSONArray;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public abstract class CommerceAdaptor {
@@ -39,6 +40,7 @@ public abstract class CommerceAdaptor {
     private final Map<String,String> configuration;
     private final Application application ;
     private final ProviderConfig providerConfig;
+    private final FulfillmentStatusAdaptor fulfillmentStatusAdaptor ;
 
     public CommerceAdaptor(Map<String,String> configuration, Subscriber subscriber) {
         this.configuration = configuration;
@@ -46,8 +48,12 @@ public abstract class CommerceAdaptor {
         this.application = ApplicationUtil.find(getSubscriber().getAppId());
         String key = configuration.keySet().stream().filter(k->k.endsWith(".provider.config")).findAny().get();
         providerConfig = new ProviderConfig(this.configuration.get(key));
+        this.fulfillmentStatusAdaptor = FulfillmentStatusAdaptorFactory.getInstance().createAdaptor(this);
     }
 
+    public FulfillmentStatusAdaptor getFulfillmentStatusAdaptor() {
+        return fulfillmentStatusAdaptor;
+    }
 
     public ProviderConfig getProviderConfig() {
         return providerConfig;
@@ -100,7 +106,7 @@ public abstract class CommerceAdaptor {
         ServiceablityTags serviceabilityTags = cFulfillment.getServiceablityTags();
 
 
-        List serviceabilityTagDetail = new List();
+        in.succinct.beckn.List serviceabilityTagDetail = new in.succinct.beckn.List();
         serviceabilityTags.add(new Tag("serviceability",serviceabilityTagDetail));
 
         DeliveryRules rules = getProviderConfig().getDeliveryRules();
@@ -248,5 +254,7 @@ public abstract class CommerceAdaptor {
     public abstract Order getStatus(Order order);
     public abstract Order cancel(Order order) ;
     public abstract String getTrackingUrl(Order order) ;
+    public abstract List<FulfillmentStatusAudit> getStatusAudit (Order order);
+
 
 }

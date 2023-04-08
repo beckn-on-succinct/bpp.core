@@ -3,14 +3,17 @@ package in.succinct.bpp.core.db.model;
 import com.venky.swf.db.annotations.column.COLUMN_DEF;
 import com.venky.swf.db.annotations.column.COLUMN_SIZE;
 import com.venky.swf.db.annotations.column.IS_NULLABLE;
+import com.venky.swf.db.annotations.column.IS_VIRTUAL;
 import com.venky.swf.db.annotations.column.UNIQUE_KEY;
 import com.venky.swf.db.annotations.column.defaulting.StandardDefault;
 import com.venky.swf.db.annotations.column.indexing.Index;
 import com.venky.swf.db.model.Model;
 import in.succinct.beckn.Fulfillment.FulfillmentStatus;
 import in.succinct.beckn.Order.Status;
+import in.succinct.bpp.core.adaptor.FulfillmentStatusAdaptor.FulfillmentStatusAudit;
 
 import java.util.Date;
+import java.util.List;
 
 public interface BecknOrderMeta extends Model {
     @UNIQUE_KEY("bt")
@@ -71,5 +74,11 @@ public interface BecknOrderMeta extends Model {
 
     public Date getFulfillmentStatusReachedAt(FulfillmentStatus status);
     public void setFulfillmentStatusReachedAt(FulfillmentStatus status, Date at);
+
+    @IS_VIRTUAL
+    public List<FulfillmentStatusAudit> getStatusAudits();
+
+    public String getTrackingUrl();
+    public void setTrackingUrl(String trackingUrl);
 
 }

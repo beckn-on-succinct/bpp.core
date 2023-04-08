@@ -1,11 +1,16 @@
 package in.succinct.bpp.core.db.model;
 
+import com.venky.core.string.StringUtil;
+import com.venky.core.util.ObjectHolder;
 import com.venky.swf.db.table.ModelImpl;
 import in.succinct.beckn.BecknObject;
 import in.succinct.beckn.Fulfillment.FulfillmentStatus;
 import in.succinct.beckn.Order.Status;
+import in.succinct.bpp.core.adaptor.FulfillmentStatusAdaptor.FulfillmentStatusAudit;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 public class BecknOrderMetaImpl extends ModelImpl<BecknOrderMeta> {
 
@@ -49,5 +54,17 @@ public class BecknOrderMetaImpl extends ModelImpl<BecknOrderMeta> {
             getProxy().setStatusUpdatedAtJson(sa.getInner().toString());
         }
     }
-
+    public List<FulfillmentStatusAudit> getStatusAudits() {
+        List<FulfillmentStatusAudit> audits = new ArrayList<>();
+        BecknObject sa = getStatusAudit();
+        BecknObject fsa = sa.get(BecknObject.class,"fulfillmentStatusAudit",true);
+        for (Object status : fsa.getInner().keySet()){
+            String sStatus = StringUtil.valueOf(status);
+            FulfillmentStatusAudit fulfillmentStatusAudit = new FulfillmentStatusAudit();
+            fulfillmentStatusAudit.setFulfillmentStatus(FulfillmentStatus.valueOf(sStatus));
+            fulfillmentStatusAudit.setDate(fsa.getTimestamp(sStatus));
+            audits.add(fulfillmentStatusAudit);
+        }
+        return audits;
+    }
 }

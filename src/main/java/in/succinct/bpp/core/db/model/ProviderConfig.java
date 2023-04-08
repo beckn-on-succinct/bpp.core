@@ -149,6 +149,12 @@ public class ProviderConfig extends BecknObject {
     }
 
 
+    public BecknObject getLogisticsAppConfig(){
+        return get(BecknObject.class, "logistics_app_config");
+    }
+    public void setLogisticsAppConfig(BecknObject logistics_app_config){
+        set("logistics_app_config",logistics_app_config);
+    }
 
     public static class Serviceability extends BecknObject{
         public boolean isServiceable(){
