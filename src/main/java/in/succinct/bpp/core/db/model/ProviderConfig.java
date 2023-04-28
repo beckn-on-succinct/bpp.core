@@ -12,10 +12,9 @@ import in.succinct.beckn.Contact;
 import in.succinct.beckn.Fulfillment.FulfillmentType;
 import in.succinct.beckn.FulfillmentStop;
 import in.succinct.beckn.Location;
-import in.succinct.beckn.SellerException;
+import in.succinct.beckn.Organization;
 import in.succinct.beckn.SellerException.DistanceServiceabilityError;
 import in.succinct.beckn.SellerException.DropoffLocationServiceabilityError;
-import in.succinct.beckn.SellerException.GenericBusinessError;
 import in.succinct.beckn.Time;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -33,6 +32,13 @@ public class ProviderConfig extends BecknObject {
 
     public ProviderConfig(String payload) {
         super(payload);
+    }
+
+    public Organization getOrganization(){
+        return get(Organization.class, "organization");
+    }
+    public void setOrganization(Organization organization){
+        set("organization",organization);
     }
 
     public String getStoreName() {
@@ -154,6 +160,59 @@ public class ProviderConfig extends BecknObject {
     }
     public void setLogisticsAppConfig(BecknObject logistics_app_config){
         set("logistics_app_config",logistics_app_config);
+    }
+
+    public IssueTrackerConfig getIssueTrackerConfig(){
+        return get(IssueTrackerConfig.class, "issue_tracker_config");
+    }
+
+    public static class IssueTrackerConfig extends BecknObject {
+
+        public String getName(){
+            return get("name");
+        }
+        public void setName(String name){
+            set("name",name);
+        }
+
+        public String getBaseUrl(){
+            return get("base_url");
+        }
+        public void setBaseUrl(String base_url){
+            set("base_url",base_url);
+        }
+
+        public String getClientId(){
+            return get("client_id");
+        }
+        public void setClientId(String client_id){
+            set("client_id",client_id);
+        }
+
+        public String getSecret(){
+            return get("secret");
+        }
+        public void setSecret(String secret){
+            set("secret",secret);
+        }
+
+        public String getTokenName(){
+            return get("token_name");
+        }
+        public void setTokenName(String token_name){
+            set("token_name",token_name);
+        }
+
+        public String getTokenValue(){
+            return get("token_value");
+        }
+        public void setTokenValue(String token_value){
+            set("token_value",token_value);
+        }
+
+
+
+
     }
 
     public static class Serviceability extends BecknObject{

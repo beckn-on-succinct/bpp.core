@@ -80,7 +80,7 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
         return null;
     }
 
-    private String getRegistryId() {
+    public String getRegistryId() {
         return get("registry_id");
     }
 
@@ -224,7 +224,7 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
     public List<Subscriber> lookup(Subscriber subscriber,boolean onlyIfSubscribed) {
         List<Subscriber> subscribers = new ArrayList<>();
 
-        JSONArray responses = new Call<JSONObject>().method(HttpMethod.POST).url(getRegistryUrl(), "lookup").input(subscriber.getInner()).inputFormat(InputFormat.JSON)
+        JSONArray responses = new Call<JSONObject>().method(HttpMethod.POST).url(getRegistryUrl(), "lookup").input(subscriber.getInner(false)).inputFormat(InputFormat.JSON)
                 .header("content-type", MimeType.APPLICATION_JSON.toString())
                 .header("accept", MimeType.APPLICATION_JSON.toString()).getResponseAsJson();
         if (responses == null) {
@@ -364,10 +364,10 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
         }
     }
 
-    private transient Cache<String,BecknObjectCreator> becknObjectCreatorCache = new Cache<>(0,0) {
+    private transient Cache<String, BecknAwareCreator> becknObjectCreatorCache = new Cache<>(0,0) {
         @Override
-        protected BecknObjectCreator getValue(String domainId) {
-            return new BecknObjectCreator(){
+        protected BecknAwareCreator getValue(String domainId) {
+            return new BecknAwareCreator(){
                 @Override
                 public <B> B create(Class<B> clazz) {
                     B b = NetworkAdaptor.this.create(clazz,domainId);
@@ -380,7 +380,7 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
         }
     };
 
-    public BecknObjectCreator getObjectCreator(String domain){
+    public BecknAwareCreator getObjectCreator(String domain){
         return becknObjectCreatorCache.get(domain);
     }
 

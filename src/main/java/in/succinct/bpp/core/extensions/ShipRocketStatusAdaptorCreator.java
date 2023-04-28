@@ -17,6 +17,9 @@ public class ShipRocketStatusAdaptorCreator implements Extension {
     @Override
     public void invoke(Object... context) {
         CommerceAdaptor commerceAdaptor = (CommerceAdaptor) context[0];
+        if (commerceAdaptor.getProviderConfig().getLogisticsAppConfig() == null){
+            return;
+        }
         if (!ObjectUtil.equals(commerceAdaptor.getProviderConfig().getLogisticsAppConfig().get("name"),"ship_rocket")){
             return;
         }

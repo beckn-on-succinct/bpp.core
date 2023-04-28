@@ -21,6 +21,11 @@ public interface BecknOrderMeta extends Model {
     public String getBecknTransactionId();
     public void setBecknTransactionId(String becknTransactionId);
 
+    @UNIQUE_KEY("bt")
+    @Index
+    public String getSubscriberId();
+    public void setSubscriberId(String subscriberId);
+
     public String getNetworkId();
     public void setNetworkId(String networkId);
 
@@ -44,7 +49,7 @@ public interface BecknOrderMeta extends Model {
     public String getECommerceOrderId();
     public void setECommerceOrderId(String eCommerceOrderId);
 
-    @COLUMN_SIZE(2048*8)
+    @COLUMN_SIZE(2048*16)
     @IS_NULLABLE
     public String getOrderJson();
     public void setOrderJson(String orderJson);

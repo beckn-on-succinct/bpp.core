@@ -29,39 +29,17 @@ import java.util.Map;
 import java.util.Set;
 
 public class LocalOrderSynchronizer {
-    private static volatile LocalOrderSynchronizer sSoleInstance;
 
-    //private constructor.
-    private LocalOrderSynchronizer() {
-        //Prevent form the reflection api.
-        if (sSoleInstance != null) {
-            throw new RuntimeException("Use getInstance() method to get the single instance of this class.");
-        }
+    final Subscriber subscriber;
+    LocalOrderSynchronizer(Subscriber subscriber) {
+        this.subscriber = subscriber;
     }
 
-    public static LocalOrderSynchronizer getInstance() {
-        if (sSoleInstance == null) { //if there is no instance available... create new one
-            synchronized (LocalOrderSynchronizer.class) {
-                if (sSoleInstance == null) sSoleInstance = new LocalOrderSynchronizer();
-            }
-        }
 
-        return sSoleInstance;
-    }
 
-    //Make singleton from serialize and deserialize operation.
-    protected LocalOrderSynchronizer readResolve() {
-        return getInstance();
-    }
-
+    Map<String,BecknOrderMeta> map = new HashMap<>();
 
     private Map<String,BecknOrderMeta> getOrderMetaMap(){
-        Map<String,BecknOrderMeta> map = Database.getInstance().getContext(BecknOrderMeta.class.getName());
-
-        if (map == null) {
-            map = new HashMap<>();
-            Database.getInstance().setContext(BecknOrderMeta.class.getName(), map);
-        }
         return map;
     }
 
@@ -87,6 +65,7 @@ public class LocalOrderSynchronizer {
         if (meta == null){
             meta = Database.getTable(BecknOrderMeta.class).newRecord();
             meta.setBecknTransactionId(transactionId);
+            meta.setSubscriberId(subscriber.getSubscriberId());
             meta = Database.getTable(BecknOrderMeta.class).getRefreshed(meta);
 
             if (meta.getRawRecord().isNewRecord()){
@@ -140,8 +119,8 @@ public class LocalOrderSynchronizer {
         return new Order(getOrderMeta(transactionId).getOrderJson());
     }
 
-    public void sync(Request request, NetworkAdaptor adaptor, Subscriber subscriber,boolean persist){
-        if (request.getMessage() == null){
+    public void sync(Request request, NetworkAdaptor adaptor,boolean persist){
+        if (request == null || request.getMessage() == null){
             return;
         }
 

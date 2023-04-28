@@ -19,6 +19,9 @@ public class TimeSensitiveCache {
         return oldValue == null ? null : (T)oldValue.value;
     }
 
+    public void clear(){
+        cache.clear();
+    }
 
 
     public <T> T get(Class<T> key, ValueProvider<T> valueProvider){

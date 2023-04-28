@@ -19,15 +19,17 @@ import in.succinct.beckn.Providers;
 import in.succinct.beckn.RatingCategories;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.ReturnReasons;
-import in.succinct.beckn.SellerException.ActionNotApplicable;
 import in.succinct.beckn.SellerException.GenericBusinessError;
 import in.succinct.beckn.SellerException.InvalidOrder;
 import in.succinct.beckn.SellerException.TrackingNotSupported;
+import in.succinct.beckn.SellerException.UpdationNotPossible;
 import in.succinct.beckn.Subscriber;
 import in.succinct.beckn.Tracking;
 import in.succinct.bpp.core.adaptor.CommerceAdaptor;
+import in.succinct.bpp.core.adaptor.IssueTracker;
+import in.succinct.bpp.core.adaptor.IssueTrackerFactory;
 import in.succinct.bpp.core.adaptor.NetworkAdaptor;
-import in.succinct.bpp.core.db.model.LocalOrderSynchronizer;
+import in.succinct.bpp.core.db.model.LocalOrderSynchronizerFactory;
 import in.succinct.bpp.core.tasks.BppActionTask;
 import org.json.simple.JSONObject;
 
@@ -53,12 +55,12 @@ public abstract class NetworkApiAdaptor {
         try {
             createReplyContext(adaptor.getSubscriber(),request,response);
 
-            LocalOrderSynchronizer.getInstance().sync(request,getNetworkAdaptor(),adaptor.getSubscriber(),false);
+            LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(adaptor.getSubscriber()).sync(request,getNetworkAdaptor(),false);
 
             Method method = getClass().getMethod(request.getContext().getAction(), CommerceAdaptor.class, Request.class, Request.class);
             method.invoke(this, adaptor,request, response);
 
-            LocalOrderSynchronizer.getInstance().sync(response,getNetworkAdaptor(),adaptor.getSubscriber(),true);
+            LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(adaptor.getSubscriber()).sync(response,getNetworkAdaptor(),true);
 
             log("ToApplication",request,headers,response,"/" + request.getContext().getAction());
             response.getContext().setBppId(adaptor.getSubscriber().getSubscriberId());
@@ -66,7 +68,10 @@ public abstract class NetworkApiAdaptor {
         }catch (BecknException ex){
             throw ex;
         }catch (Exception ex){
-            BecknException e = new GenericBusinessError(ExceptionUtil.getRootCause(ex).getMessage());
+            BecknException e =  (BecknException) ExceptionUtil.getEmbeddedException(ex,BecknException.class);
+            if (e == null) {
+                e = new GenericBusinessError(ExceptionUtil.getRootCause(ex).getMessage());
+            }
             Config.instance().getLogger(getClass().getName()).log(Level.WARNING,e.getMessage(),ex);
             throw e;
         }
@@ -110,7 +115,7 @@ public abstract class NetworkApiAdaptor {
         Message message = new Message(); reply.setMessage(message);
         Order draftOrder = adaptor.initializeDraftOrder(request); // RECompute
         message.setOrder(draftOrder); //Temporarily setit for synchronization purposes
-        LocalOrderSynchronizer.getInstance().sync(reply,getNetworkAdaptor(),adaptor.getSubscriber(),false);
+        LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(adaptor.getSubscriber()).sync(reply,getNetworkAdaptor(),false);
 
         Order confirmedOrder = adaptor.confirmDraftOrder(draftOrder);
         message.setOrder(confirmedOrder);
@@ -120,6 +125,13 @@ public abstract class NetworkApiAdaptor {
     public void track(CommerceAdaptor adaptor, Request request, Request reply) {
         /* Take track message and fill response with on_track message */
         Order order = request.getMessage().getOrder();
+        if (order == null){
+            if (request.getMessage().getOrderId() != null){
+                order = new Order();
+                order.setId(request.getMessage().getOrderId());
+                request.getMessage().setOrder(order);
+            }
+        }
         if (order == null){
             throw new InvalidOrder();
         }
@@ -155,7 +167,7 @@ public abstract class NetworkApiAdaptor {
     }
 
     public void update(CommerceAdaptor adaptor, Request request, Request reply) {
-        throw new ActionNotApplicable("Orders cannot be updated. Please cancel and rebook your orders!");
+        throw new UpdationNotPossible("Orders cannot be updated. Please cancel and rebook your orders!");
     }
 
     public void status(CommerceAdaptor adaptor, Request request, Request reply) {
@@ -177,6 +189,16 @@ public abstract class NetworkApiAdaptor {
 
     public void rating(CommerceAdaptor adaptor, Request request, Request reply) {
 
+    }
+
+    public void issue(CommerceAdaptor adaptor, Request request, Request reply) {
+        IssueTracker tracker = adaptor.getIssueTracker();
+        tracker.save(request.getMessage());
+    }
+
+    public void issue_status(CommerceAdaptor adaptor, Request request, Request reply) {
+        IssueTracker tracker = adaptor.getIssueTracker();
+        tracker.status(request.getMessage());
     }
 
     public void support(CommerceAdaptor adaptor, Request request, Request reply) {
@@ -219,7 +241,7 @@ public abstract class NetworkApiAdaptor {
             throw new RuntimeException("Create Context before sending callback");
         }
 
-        LocalOrderSynchronizer.getInstance().sync(reply,getNetworkAdaptor(),adaptor.getSubscriber(),true);
+        LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(adaptor.getSubscriber()).sync(reply,getNetworkAdaptor(),true);
 
         reply.getContext().setBppId(adaptor.getSubscriber().getSubscriberId());
         reply.getContext().setBppUri(adaptor.getSubscriber().getSubscriberUrl());

@@ -41,6 +41,7 @@ public abstract class CommerceAdaptor {
     private final Application application ;
     private final ProviderConfig providerConfig;
     private final FulfillmentStatusAdaptor fulfillmentStatusAdaptor ;
+    private final IssueTracker issueTracker;
 
     public CommerceAdaptor(Map<String,String> configuration, Subscriber subscriber) {
         this.configuration = configuration;
@@ -48,7 +49,13 @@ public abstract class CommerceAdaptor {
         this.application = ApplicationUtil.find(getSubscriber().getAppId());
         String key = configuration.keySet().stream().filter(k->k.endsWith(".provider.config")).findAny().get();
         providerConfig = new ProviderConfig(this.configuration.get(key));
+        this.subscriber.setOrganization(providerConfig.getOrganization());
         this.fulfillmentStatusAdaptor = FulfillmentStatusAdaptorFactory.getInstance().createAdaptor(this);
+        this.issueTracker = IssueTrackerFactory.getInstance().createIssueTracker(providerConfig.getIssueTrackerConfig().getName(),providerConfig.getIssueTrackerConfig());
+    }
+
+    public IssueTracker getIssueTracker() {
+        return issueTracker;
     }
 
     public FulfillmentStatusAdaptor getFulfillmentStatusAdaptor() {
@@ -255,6 +262,6 @@ public abstract class CommerceAdaptor {
     public abstract Order cancel(Order order) ;
     public abstract String getTrackingUrl(Order order) ;
     public abstract List<FulfillmentStatusAudit> getStatusAudit (Order order);
-
+    public abstract void clearCache();
 
 }
