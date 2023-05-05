@@ -76,35 +76,31 @@ public abstract class NetworkApiAdaptor {
             throw e;
         }
     }
-    public abstract void search(CommerceAdaptor adaptor,Request request, Request reply);
+    public void search(CommerceAdaptor adaptor,Request request, Request reply){
+        adaptor.search(request,reply);
+    }
 
-    //Called from serch adaptor to cache the complete catalog!
+    //Called from search adaptor installer to cache the complete catalog!
     public void _search(CommerceAdaptor adaptor, Request reply) {
-        Message message = new Message();
-        reply.setMessage(message);
-
-        Catalog catalog = new Catalog();
-        message.setCatalog(catalog);
-
-        Providers providers = new Providers();
-        catalog.setProviders(providers);
-        Provider provider = adaptor.getProvider();
-        providers.add(provider);
+        adaptor._search(reply);
     }
     protected final TypeConverter<Double> doubleTypeConverter = Database.getJdbcTypeHelper("").getTypeRef(double.class).getTypeConverter();
     protected final TypeConverter<Boolean> booleanTypeConverter  = Database.getJdbcTypeHelper("").getTypeRef(boolean.class).getTypeConverter();
 
 
-    public abstract void select(CommerceAdaptor adaptor,Request request, Request reply);
+    public  void select(CommerceAdaptor adaptor,Request request, Request reply){
+        adaptor.select(request,reply);
+    }
 
 
     public void init(CommerceAdaptor adaptor, Request request, Request reply) {
-
-        Message message = new Message();
-        reply.setMessage(message);
-
-        Order draftOrder = adaptor.initializeDraftOrder(request);
-        message.setOrder(draftOrder);
+        init(adaptor,request,reply,false);
+    }
+    private void init(CommerceAdaptor adaptor, Request request, Request reply,boolean syncMeta) {
+        adaptor.init(request,reply);
+        if (syncMeta){
+            LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(adaptor.getSubscriber()).sync(reply,getNetworkAdaptor(),false);
+        }
     }
 
     public void confirm(CommerceAdaptor adaptor, Request request, Request reply) {
@@ -112,118 +108,67 @@ public abstract class NetworkApiAdaptor {
         if (order == null){
             throw new InvalidOrder();
         }
-        Message message = new Message(); reply.setMessage(message);
-        Order draftOrder = adaptor.initializeDraftOrder(request); // RECompute
-        message.setOrder(draftOrder); //Temporarily setit for synchronization purposes
-        LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(adaptor.getSubscriber()).sync(reply,getNetworkAdaptor(),false);
 
-        Order confirmedOrder = adaptor.confirmDraftOrder(draftOrder);
-        message.setOrder(confirmedOrder);
+        init(adaptor,request,reply,true);
+
+        Request initReply = getNetworkAdaptor().getObjectCreator(adaptor.getSubscriber().getDomain()).create(Request.class);
+        initReply.update(reply);
+
+        adaptor.confirm(initReply,reply);
     }
 
 
     public void track(CommerceAdaptor adaptor, Request request, Request reply) {
-        /* Take track message and fill response with on_track message */
-        Order order = request.getMessage().getOrder();
-        if (order == null){
-            if (request.getMessage().getOrderId() != null){
-                order = new Order();
-                order.setId(request.getMessage().getOrderId());
-                request.getMessage().setOrder(order);
-            }
-        }
-        if (order == null){
-            throw new InvalidOrder();
-        }
-        String trackUrl  = adaptor.getTrackingUrl(order);
-        Message message = new Message();
-        reply.setMessage(message);
-
-        if (trackUrl != null) {
-            message.setTracking(new Tracking());
-            message.getTracking().setUrl(trackUrl);
-        }else {
-            throw new TrackingNotSupported();
-        }
+        adaptor.track(request,reply);
     }
 
-
-
-
     public void cancel(CommerceAdaptor adaptor, Request request, Request reply) {
-        Order order = request.getMessage().getOrder();
-        if (order == null){
-            if (request.getMessage().getOrderId() != null){
-                order = new Order();
-                order.setId(request.getMessage().getOrderId());
-            }
-        }
-        if (order == null){
-            throw new InvalidOrder();
-        }
-        Order cancelledOrder = adaptor.cancel(order);
-        Message message = new Message(); reply.setMessage(message);
-        message.setOrder(cancelledOrder);
+        adaptor.cancel(request,reply);
+
     }
 
     public void update(CommerceAdaptor adaptor, Request request, Request reply) {
-        throw new UpdationNotPossible("Orders cannot be updated. Please cancel and rebook your orders!");
+        adaptor.update(request,reply);
     }
 
     public void status(CommerceAdaptor adaptor, Request request, Request reply) {
-        Order order = request.getMessage().getOrder();
-        if (order == null){
-            if (request.getMessage().getOrderId() != null){
-                order = new Order();
-                order.setId(request.getMessage().getOrderId());
-                request.getMessage().setOrder(order);
-            }
-        }
-        if (order == null){
-            throw new InvalidOrder();
-        }
-        reply.setMessage(new Message());
-        Order current = adaptor.getStatus(order);
-        reply.getMessage().setOrder(current);
+        adaptor.status(request,reply);
     }
 
     public void rating(CommerceAdaptor adaptor, Request request, Request reply) {
-
+        adaptor.rating(request,reply);
     }
 
     public void issue(CommerceAdaptor adaptor, Request request, Request reply) {
-        IssueTracker tracker = adaptor.getIssueTracker();
-        tracker.save(request.getMessage());
+        adaptor.issue(request,reply);
     }
 
     public void issue_status(CommerceAdaptor adaptor, Request request, Request reply) {
-        IssueTracker tracker = adaptor.getIssueTracker();
-        tracker.status(request.getMessage());
+        adaptor.issue_status(request,reply);
     }
 
     public void support(CommerceAdaptor adaptor, Request request, Request reply) {
-        reply.setMessage(new Message());
-        reply.getMessage().setEmail(adaptor.getProviderConfig().getSupportContact().getEmail());
-        reply.getMessage().setPhone(adaptor.getProviderConfig().getSupportContact().getPhone());
+        adaptor.support(request,reply);
     }
 
     public void get_cancellation_reasons(CommerceAdaptor adaptor, Request request, Request reply) {
-        reply.setCancellationReasons(new CancellationReasons());
+        adaptor.get_cancellation_reasons(request,reply);
     }
 
     public void get_return_reasons(CommerceAdaptor adaptor, Request request, Request reply) {
-        reply.setReturnReasons(new ReturnReasons());
+        adaptor.get_return_reasons(request,reply);
     }
 
     public void get_rating_categories(CommerceAdaptor adaptor, Request request, Request reply) {
-        reply.setRatingCategories(new RatingCategories());
+        adaptor.get_rating_categories(request,reply);
     }
 
     public void get_feedback_categories(CommerceAdaptor adaptor, Request request, Request reply) {
-        reply.setFeedbackCategories(new FeedbackCategories());
+        adaptor.get_feedback_categories(request,reply);
     }
 
     public void get_feedback_form(CommerceAdaptor adaptor, Request request, Request reply) {
+        adaptor.get_feedback_form(request,reply);
     }
 
     public void createReplyContext(Subscriber subscriber, Request from, Request to) {
