@@ -93,7 +93,7 @@ public class SuccinctIssueTracker extends IssueTracker {
         dbIssue.setRespondentId(getDbRepresentative(context,dbIssue,issue.getRespondent()).getId());
         dbIssue.setOrderJson(issue.getOrder().toString());
         dbIssue.setSatisfactorilyClosed(issue.isSatisfied());
-        dbIssue.setStatus(issue.getStatus().n   ame());
+        dbIssue.setStatus(issue.getStatus().name());
         for (SelectedOdrs sordrs : issue.getSelectedOdrsList()) {
             in.succinct.beckn.Representative representative = sordrs.getRepresentative();
             Representative dbRepresentative = getDbRepresentative(context, dbIssue, representative);
