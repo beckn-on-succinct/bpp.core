@@ -49,22 +49,36 @@ public abstract class NetworkApiAdaptor {
     }
 
     public void call(CommerceAdaptor adaptor, Map<String,String> headers, Request request, Request response){
-        JSONObject h = new JSONObject();h.putAll(headers);
-        request.getExtendedAttributes().set("headers",h);
-        request.setObjectCreator(getNetworkAdaptor().getObjectCreator(adaptor.getSubscriber().getDomain()));
         try {
-            createReplyContext(adaptor.getSubscriber(),request,response);
+            request.setObjectCreator(getNetworkAdaptor().getObjectCreator(adaptor.getSubscriber().getDomain()));
+            response.setObjectCreator(getNetworkAdaptor().getObjectCreator(adaptor.getSubscriber().getDomain()));
 
-            LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(adaptor.getSubscriber()).sync(request,getNetworkAdaptor(),false);
 
-            Method method = getClass().getMethod(request.getContext().getAction(), CommerceAdaptor.class, Request.class, Request.class);
-            method.invoke(this, adaptor,request, response);
+            Request internalRequest  = new Request();
+            internalRequest.update(request);
+            JSONObject h = new JSONObject();h.putAll(headers);
+            internalRequest.getExtendedAttributes().set("headers",h);
+            internalRequest.getContext().setNetworkId(getNetworkAdaptor().getId());
 
-            LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(adaptor.getSubscriber()).sync(response,getNetworkAdaptor(),true);
+            Request internalResponse = new Request();
+            createReplyContext(adaptor.getSubscriber(),internalRequest,internalResponse);
 
-            log("ToApplication",request,headers,response,"/" + request.getContext().getAction());
-            response.getContext().setBppId(adaptor.getSubscriber().getSubscriberId());
-            response.getContext().setBppUri(adaptor.getSubscriber().getSubscriberUrl());
+            LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(adaptor.getSubscriber()).sync(internalRequest,getNetworkAdaptor(),false);
+
+            Method method = getClass().getMethod(internalRequest.getContext().getAction(), CommerceAdaptor.class, Request.class, Request.class);
+            method.invoke(this, adaptor,internalRequest, internalResponse);
+
+            internalResponse.getContext().setBppId(adaptor.getSubscriber().getSubscriberId());
+            internalResponse.getContext().setBppUri(adaptor.getSubscriber().getSubscriberUrl());
+
+            log("ToApplication",internalRequest,headers,internalResponse,"/" + internalRequest.getContext().getAction());
+
+            LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(adaptor.getSubscriber()).sync(internalResponse,getNetworkAdaptor(),true);
+
+            response.update(internalResponse);
+
+            log("FromNetwork->ToNetwork",request,headers,response,"/" + request.getContext().getAction());
+
         }catch (BecknException ex){
             throw ex;
         }catch (Exception ex){

@@ -72,12 +72,20 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
         set("domains",domains);
     }
 
+    private Subscriber registry = null;
     public Subscriber getRegistry(){
-        List<Subscriber> subscribers =  lookup(getRegistryId(),true);
-        if (!subscribers.isEmpty()){
-            return subscribers.get(0);
+        if (registry != null){
+            return registry;
         }
-        return null;
+        synchronized (this){
+            if (registry == null) {
+                List<Subscriber> subscribers = lookup(getRegistryId(), true);
+                if (!subscribers.isEmpty()) {
+                    registry = subscribers.get(0);
+                }
+            }
+        }
+        return registry;
     }
 
     public String getRegistryId() {

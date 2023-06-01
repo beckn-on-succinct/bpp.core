@@ -33,14 +33,14 @@ public class IssueTrackerFactory {
         return getInstance();
     }
 
-    private final Map<String,Class<IssueTracker>> cache = Collections.synchronizedMap(new HashMap<>());
-    public void registerAdaptor(String name, Class<IssueTracker> adaptorClass){
+    private final Map<String,Class<? extends IssueTracker>> cache = Collections.synchronizedMap(new HashMap<>());
+    public <T extends IssueTracker> void registerAdaptor(String name, Class<T> adaptorClass){
         cache.put(name,adaptorClass);
     }
 
 
     public IssueTracker createIssueTracker(String name, IssueTrackerConfig config){
-        Class<IssueTracker> trackerClass = cache.get(name);
+        Class<? extends IssueTracker> trackerClass = cache.get(name);
         if (trackerClass == null){
             throw new RuntimeException("Not tracker registered as " + name);
         }

@@ -32,9 +32,13 @@ public class BppActionTask extends BppTask {
         Request callbackRequest = new Request();
         networkApiAdaptor.call(adaptor,getHeaders(),request,callbackRequest);
 
+        /*
         Request finalCallbackRequest = networkApiAdaptor.getNetworkAdaptor().getObjectCreator(adaptor.getSubscriber().getDomain()).create(Request.class);
         finalCallbackRequest.update(callbackRequest);
         return finalCallbackRequest;
+        
+         */
+        return callbackRequest;
     }
 
     @Override

@@ -7,7 +7,7 @@ import in.succinct.bpp.core.db.model.ProviderConfig.IssueTrackerConfig;
 public abstract class IssueTracker {
     IssueTrackerConfig config;
 
-    IssueTracker(IssueTrackerConfig config) {
+    protected IssueTracker(IssueTrackerConfig config) {
         this.config = config;
     }
 
