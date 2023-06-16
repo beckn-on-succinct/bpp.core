@@ -6,10 +6,8 @@ import com.venky.swf.integration.api.Call;
 import com.venky.swf.integration.api.HttpMethod;
 import com.venky.swf.integration.api.InputFormat;
 import in.succinct.beckn.Fulfillment.FulfillmentStatus;
-import in.succinct.beckn.SellerException;
-import in.succinct.beckn.SellerException.InvalidOrder;
 import in.succinct.bpp.core.adaptor.CommerceAdaptor;
-import in.succinct.bpp.core.adaptor.FulfillmentStatusAdaptor;
+import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptor;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 

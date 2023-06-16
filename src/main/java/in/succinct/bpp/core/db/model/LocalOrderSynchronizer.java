@@ -1,26 +1,39 @@
 package in.succinct.bpp.core.db.model;
 
+import com.venky.core.math.DoubleUtils;
+import com.venky.core.util.Bucket;
 import com.venky.core.util.ObjectUtil;
 import com.venky.swf.db.Database;
+import com.venky.swf.db.JdbcTypeHelper.DoubleConverter;
+import com.venky.swf.db.JdbcTypeHelper.TypeConverter;
 import com.venky.swf.plugins.beckn.messaging.Subscriber;
+import in.succinct.beckn.BreakUp.BreakUpElement;
+import in.succinct.beckn.BreakUp.BreakUpElement.BreakUpCategory;
 import in.succinct.beckn.Context;
 import in.succinct.beckn.Fulfillment;
 import in.succinct.beckn.Fulfillment.FulfillmentStatus;
 import in.succinct.beckn.Fulfillment.FulfillmentType;
 import in.succinct.beckn.Intent;
+import in.succinct.beckn.Item;
 import in.succinct.beckn.Locations;
 import in.succinct.beckn.Order;
 import in.succinct.beckn.Order.Status;
 import in.succinct.beckn.Payment;
+import in.succinct.beckn.Payment.CollectedBy;
 import in.succinct.beckn.Payment.CommissionType;
+import in.succinct.beckn.Payment.PaymentStatus;
 import in.succinct.beckn.Request;
+import in.succinct.beckn.SellerException;
 import in.succinct.beckn.SellerException.GenericBusinessError;
 import in.succinct.beckn.SellerException.InvalidOrder;
 import in.succinct.beckn.SellerException.InvalidRequestError;
-import in.succinct.bpp.core.adaptor.FulfillmentStatusAdaptor.FulfillmentStatusAudit;
+import in.succinct.beckn.SettlementDetail;
+import in.succinct.beckn.SettlementDetails;
+import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptor.FulfillmentStatusAudit;
 import in.succinct.bpp.core.adaptor.NetworkAdaptor;
 import in.succinct.bpp.core.adaptor.api.BecknIdHelper;
 import in.succinct.bpp.core.adaptor.api.BecknIdHelper.Entity;
+import in.succinct.bpp.core.db.model.rsp.Settlement;
 
 import java.util.Date;
 import java.util.HashMap;
@@ -77,6 +90,14 @@ public class LocalOrderSynchronizer {
         return meta;
     }
 
+    private BecknOrderMeta getOrderMeta(Order order){
+        BecknOrderMeta meta = Database.getTable(BecknOrderMeta.class).newRecord();
+        meta.setBapOrderId(order.getId());
+        meta = Database.getTable(BecknOrderMeta.class).getRefreshed(meta);
+
+        return meta;
+    }
+
     private Set<String> getBecknTransactionIds(){
         Map<String,BecknOrderMeta> map = getOrderMetaMap();
         return map.keySet();
@@ -96,7 +117,13 @@ public class LocalOrderSynchronizer {
                     return value.getECommerceOrderId();
                 }
             }
+            BecknOrderMeta meta = getOrderMeta(order);
+            if (meta != null){
+                getOrderMetaMap().put(meta.getBecknTransactionId(),meta);
+                return meta.getECommerceOrderId();
+            }
         }
+
         return getOrderMeta().getECommerceOrderId();
     }
     public String getLocalDraftOrderId(Order order){
@@ -105,6 +132,11 @@ public class LocalOrderSynchronizer {
                 if (ObjectUtil.equals(value.getBapOrderId(), order.getId())) {
                     return value.getECommerceDraftOrderId();
                 }
+            }
+            BecknOrderMeta meta = getOrderMeta(order);
+            if (meta != null){
+                getOrderMetaMap().put(meta.getBecknTransactionId(),meta);
+                return meta.getECommerceDraftOrderId();
             }
         }
         return getOrderMeta().getECommerceDraftOrderId();
@@ -116,7 +148,10 @@ public class LocalOrderSynchronizer {
         getOrderMeta(transactionId).setECommerceDraftOrderId(localDraftOrderid);
     }
     public Order getLastKnownOrder(String transactionId){
-        return new Order(getOrderMeta(transactionId).getOrderJson());
+        return getLastKnownOrder(getOrderMeta(transactionId));
+    }
+    public Order getLastKnownOrder(BecknOrderMeta meta){
+        return new Order(meta.getOrderJson());
     }
 
     public void sync(Request request, NetworkAdaptor adaptor,boolean persist){
@@ -315,5 +350,98 @@ public class LocalOrderSynchronizer {
     }
     public void setTrackingUrl(String transactionId,String trackingUrl){
         getOrderMeta(transactionId).setTrackingUrl(trackingUrl);
+    }
+
+    public void receiver_recon(Order order, ProviderConfig providerConfig) {
+        BecknOrderMeta meta = getOrderMeta(order);
+        Order lastKnown = getLastKnownOrder(meta);
+        boolean ok = true;
+        ok = ok && ObjectUtil.equals(lastKnown.getState(),order.getState());
+        ok = ok && validatePayment(order,lastKnown, meta, providerConfig);
+
+
+
+
+
+    }
+
+    private boolean validatePayment(Order order, Order lastKnown,BecknOrderMeta meta, ProviderConfig providerConfig) {
+        boolean ok = (lastKnown.getPayment().getParams().getAmount() == order.getPayment().getParams().getAmount());
+        ok = ok && ObjectUtil.equals(lastKnown.getPayment().getParams().getCurrency(),order.getPayment().getParams().getCurrency());
+        ok = ok && ObjectUtil.equals(lastKnown.getPayment().getUri(),order.getPayment().getUri());
+        ok = ok && ObjectUtil.equals(lastKnown.getPayment().getType(),order.getPayment().getType());
+        ok = ok && ObjectUtil.equals(lastKnown.getPayment().getCollectedBy(),order.getPayment().getCollectedBy());
+        ok = ok && ObjectUtil.equals(lastKnown.getPayment().getBuyerAppFinderFeeType(),order.getPayment().getBuyerAppFinderFeeType());
+        ok = ok && ObjectUtil.equals(lastKnown.getPayment().getBuyerAppFinderFeeAmount(),order.getPayment().getBuyerAppFinderFeeAmount());
+        ok = ok && ObjectUtil.equals(lastKnown.getPayment().getReturnWindow(),order.getPayment().getReturnWindow()) ;
+        ok = ok && ObjectUtil.equals(lastKnown.getPayment().getSettlementBasis(),order.getPayment().getSettlementBasis()) || ObjectUtil.isVoid(lastKnown.getPayment().getSettlementBasis());
+        ok = ok && ObjectUtil.equals(lastKnown.getPayment().getSettlementWindow(),order.getPayment().getSettlementWindow()) || ObjectUtil.isVoid(lastKnown.getPayment().getSettlementWindow());
+        ok = ok && ObjectUtil.equals(lastKnown.getPayment().getWithholdingAmount(),order.getPayment().getWithholdingAmount()) || ObjectUtil.isVoid(lastKnown.getPayment().getWithholdingAmount());
+        if (!ok){
+            return ok;
+        }
+
+        BreakUpElement deliveryElement = null;
+        for (BreakUpElement e : order.getQuote().getBreakUp()){
+            if (e.getType() == BreakUpCategory.delivery){
+                deliveryElement = e;
+                break;
+            }
+        }
+        double deliveryAmount = deliveryElement == null ? 0 : deliveryElement.getPrice().getValue();
+        double deliveryGST = (providerConfig.getDeliveryGstPct()/100.0)*deliveryAmount;
+
+        double invoiceAmount = order.getPayment().getParams().getAmount();
+        TypeConverter<Double> doubleConverter = Database.getJdbcTypeHelper("").getTypeRef(Double.class).getTypeConverter();
+        double feeAmount = doubleConverter.valueOf(order.getPayment().getBuyerAppFinderFeeAmount());
+
+        if (order.getPayment().getBuyerAppFinderFeeType() == CommissionType.Percent) {
+            feeAmount = (feeAmount / 100.0)* invoiceAmount;
+        }
+
+        double withholdingAmount =  doubleConverter.valueOf(order.getPayment().getWithholdingAmount()) ;
+
+        double tcs_gst = (providerConfig.getGstWithheldPercent()/100.0) * invoiceAmount;
+        double tds = providerConfig.getTaxWithheldPercent() * invoiceAmount / 100.0;
+        double buyer_app_fee_gst = ( providerConfig.getBuyerAppCommissionGstPct() / 100.0 ) * feeAmount;
+
+        //double tds_on_buyer_app_fee = providerConfig.getTaxWithheldPercentForBuyerAppFinderFee() * feeAmount / 100.0;
+
+        Payment payment = order.getPayment();
+        if (payment.getStatus() != PaymentStatus.PAID || payment.getCollectedBy() != CollectedBy.BAP){
+            throw  new SellerException.PaymentNotSupported();
+        }
+
+
+        boolean sameState = ObjectUtil.equals(order.getFulfillment().getStart().getLocation().getAddress().getState(),order.getFulfillment().getEnd().getLocation().getAddress().getState());
+        Bucket cgst = new Bucket(); Bucket sgst = new Bucket(); Bucket igst = new Bucket();
+        for (Item item : order.getItems()){
+            double gst = item.getPrice().getValue() * doubleConverter.valueOf(item.getTags().get("tax_rate"))/100.0;
+            if (sameState){
+                cgst.increment(gst/2);sgst.increment(gst/2);
+            }else {
+                igst.increment(gst);
+            }
+        }
+
+
+
+        SettlementDetails settlementDetails = payment.getSettlementDetails();
+        for (int i = 0 ; i < settlementDetails.size() ; i ++ ){
+            SettlementDetail detail = settlementDetails.get(i);
+            Settlement settlement = Database.getTable(Settlement.class).newRecord();
+            settlement.setBecknOrderMetaId(meta.getId());
+            if (i == 0) {
+               settlement.setBuyerFeeAmount(feeAmount);
+               settlement.setInvoiceAmount(invoiceAmount);
+               settlement.setCGst(cgst.doubleValue());
+               settlement.setSgst(sgst.doubleValue());
+               settlement.setIgst(igst.doubleValue());
+            }
+        }
+
+
+
+        return ok;
     }
 }

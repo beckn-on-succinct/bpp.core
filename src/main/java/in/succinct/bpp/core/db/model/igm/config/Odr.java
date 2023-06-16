@@ -4,6 +4,7 @@ import com.venky.swf.db.annotations.column.COLUMN_DEF;
 import com.venky.swf.db.annotations.column.defaulting.StandardDefault;
 import com.venky.swf.db.annotations.column.validations.RegEx;
 import com.venky.swf.db.model.Model;
+import in.succinct.bpp.core.db.model.Subscriber;
 
 public interface Odr extends Model {
     public String getName();

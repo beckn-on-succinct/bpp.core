@@ -1,12 +1,11 @@
 package in.succinct.bpp.core.db.model;
 
 import com.venky.core.string.StringUtil;
-import com.venky.core.util.ObjectHolder;
 import com.venky.swf.db.table.ModelImpl;
 import in.succinct.beckn.BecknObject;
 import in.succinct.beckn.Fulfillment.FulfillmentStatus;
 import in.succinct.beckn.Order.Status;
-import in.succinct.bpp.core.adaptor.FulfillmentStatusAdaptor.FulfillmentStatusAudit;
+import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptor.FulfillmentStatusAudit;
 
 import java.util.ArrayList;
 import java.util.Date;

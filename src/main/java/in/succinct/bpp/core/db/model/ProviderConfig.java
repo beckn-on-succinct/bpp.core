@@ -166,6 +166,46 @@ public class ProviderConfig extends BecknObject {
         return get(IssueTrackerConfig.class, "issue_tracker_config");
     }
 
+    public RatingCollectorConfig getRatingCollectorConfig(){
+        return get(RatingCollectorConfig.class,"rating_collector_config");
+    }
+
+
+    public double getGstWithheldPercent(){
+        return getDouble("gst_withheld_percent",1.0);
+    }
+    public void setGstWithheldPercent(double gst_withheld_percent){
+        set("gst_withheld_percent",gst_withheld_percent);
+    }
+    public double getTaxWithheldPercent(){
+        return getDouble("tax_withheld_percent",1.0);
+    }
+    public void setTaxWithheldPercent(double tax_withheld_percent){
+        set("tax_withheld_percent",tax_withheld_percent);
+    }
+
+    public double getTaxWithheldPercentForBuyerAppFinderFee(){
+        return getDouble("tax_withheld_percent_for_buyer_app_finder_fee",1.0);
+    }
+    public void setTaxWithheldPercentForBuyerAppFinderFee(double tax_withheld_percent_for_buyer_app_finder_fee){
+        set("tax_withheld_percent_for_buyer_app_finder_fee",tax_withheld_percent_for_buyer_app_finder_fee);
+    }
+
+    public double getBuyerAppCommissionGstPct(){
+        return getDouble("buyer_app_commission_gst_pct");
+    }
+    public void setBuyerAppCommissionGstPct(double buyer_app_commission_gst_pct){
+        set("buyer_app_commission_gst_pct",buyer_app_commission_gst_pct);
+    }
+
+    public double getDeliveryGstPct(){
+        return getDouble("delivery_gst_pct");
+    }
+    public void setDeliveryGstPct(double delivery_gst_pct){
+        set("delivery_gst_pct",delivery_gst_pct);
+    }
+
+
     public static class IssueTrackerConfig extends BecknObject {
 
         public String getName(){
@@ -213,6 +253,16 @@ public class ProviderConfig extends BecknObject {
 
 
 
+    }
+
+
+    public static class RatingCollectorConfig extends BecknObject {
+        public String getName(){
+            return get("name");
+        }
+        public void setName(String name){
+            set("name",name);
+        }
     }
 
     public static class Serviceability extends BecknObject{

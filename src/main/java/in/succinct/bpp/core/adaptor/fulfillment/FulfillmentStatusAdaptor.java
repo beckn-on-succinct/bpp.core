@@ -1,7 +1,8 @@
-package in.succinct.bpp.core.adaptor;
+package in.succinct.bpp.core.adaptor.fulfillment;
 
 import in.succinct.beckn.BecknObject;
 import in.succinct.beckn.Fulfillment.FulfillmentStatus;
+import in.succinct.bpp.core.adaptor.CommerceAdaptor;
 
 import java.util.Date;
 import java.util.List;

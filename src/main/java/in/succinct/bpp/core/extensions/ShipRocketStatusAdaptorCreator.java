@@ -5,7 +5,7 @@ import com.venky.core.util.ObjectUtil;
 import com.venky.extension.Extension;
 import com.venky.extension.Registry;
 import in.succinct.bpp.core.adaptor.CommerceAdaptor;
-import in.succinct.bpp.core.adaptor.FulfillmentStatusAdaptor;
+import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptor;
 
 import java.util.HashMap;
 import java.util.Map;

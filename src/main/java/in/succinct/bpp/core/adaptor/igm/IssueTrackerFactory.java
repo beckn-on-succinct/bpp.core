@@ -1,8 +1,7 @@
-package in.succinct.bpp.core.adaptor;
+package in.succinct.bpp.core.adaptor.igm;
 
-import in.succinct.bpp.core.db.model.ProviderConfig.IssueTrackerConfig;
+import in.succinct.bpp.core.adaptor.CommerceAdaptor;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -39,13 +38,13 @@ public class IssueTrackerFactory {
     }
 
 
-    public IssueTracker createIssueTracker(String name, IssueTrackerConfig config){
-        Class<? extends IssueTracker> trackerClass = cache.get(name);
+    public IssueTracker createIssueTracker(CommerceAdaptor adaptor){
+        Class<? extends IssueTracker> trackerClass = cache.get(adaptor.getProviderConfig().getIssueTrackerConfig().getName());
         if (trackerClass == null){
-            throw new RuntimeException("Not tracker registered as " + name);
+            throw new RuntimeException("Not tracker registered as " + adaptor.getProviderConfig().getIssueTrackerConfig().getName());
         }
         try {
-            return trackerClass.getConstructor(IssueTrackerConfig.class).newInstance(config);
+            return trackerClass.getConstructor(CommerceAdaptor.class).newInstance(adaptor);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

@@ -13,6 +13,12 @@ import in.succinct.beckn.Message;
 import in.succinct.beckn.RatingCategories;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.ReturnReasons;
+import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptor;
+import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptorFactory;
+import in.succinct.bpp.core.adaptor.igm.IssueTracker;
+import in.succinct.bpp.core.adaptor.igm.IssueTrackerFactory;
+import in.succinct.bpp.core.adaptor.rating.RatingCollector;
+import in.succinct.bpp.core.adaptor.rating.RatingCollectorFactory;
 import in.succinct.bpp.core.db.model.ProviderConfig;
 
 import java.sql.Timestamp;
@@ -25,6 +31,7 @@ public abstract class CommerceAdaptor{
     private final ProviderConfig providerConfig;
     private final FulfillmentStatusAdaptor fulfillmentStatusAdaptor ;
     private final IssueTracker issueTracker;
+    private final RatingCollector ratingCollector;
 
     public CommerceAdaptor(Map<String,String> configuration, Subscriber subscriber) {
         this.configuration = configuration;
@@ -33,7 +40,8 @@ public abstract class CommerceAdaptor{
         providerConfig = new ProviderConfig(this.configuration.get(key));
         this.subscriber.setOrganization(providerConfig.getOrganization());
         this.fulfillmentStatusAdaptor = FulfillmentStatusAdaptorFactory.getInstance().createAdaptor(this);
-        this.issueTracker = providerConfig.getIssueTrackerConfig() == null ? null : IssueTrackerFactory.getInstance().createIssueTracker(providerConfig.getIssueTrackerConfig().getName(),providerConfig.getIssueTrackerConfig());
+        this.issueTracker = providerConfig.getIssueTrackerConfig() == null ? null : IssueTrackerFactory.getInstance().createIssueTracker(this);
+        this.ratingCollector = providerConfig.getRatingCollectorConfig() == null ? null : RatingCollectorFactory.getInstance().createRatingCollector(this);
         this.application = getApplication(getSubscriber().getAppId());
     }
     public Application getApplication(String appId){
@@ -79,6 +87,10 @@ public abstract class CommerceAdaptor{
         return issueTracker;
     }
 
+    public RatingCollector getRatingCollector() {
+        return ratingCollector;
+    }
+
     public FulfillmentStatusAdaptor getFulfillmentStatusAdaptor() {
         return fulfillmentStatusAdaptor;
     }
@@ -107,6 +119,7 @@ public abstract class CommerceAdaptor{
     public abstract void track(Request request, Request response);
     public abstract void issue(Request request, Request response);
     public abstract void issue_status(Request request, Request response);
+    public abstract void receiver_recon(Request request, Request reply) ;
     public abstract void cancel(Request request, Request response);
     public abstract void update(Request request, Request response);
     public abstract void status(Request request, Request response);

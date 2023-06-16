@@ -10,7 +10,7 @@ import com.venky.swf.db.annotations.column.indexing.Index;
 import com.venky.swf.db.model.Model;
 import in.succinct.beckn.Fulfillment.FulfillmentStatus;
 import in.succinct.beckn.Order.Status;
-import in.succinct.bpp.core.adaptor.FulfillmentStatusAdaptor.FulfillmentStatusAudit;
+import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptor.FulfillmentStatusAudit;
 
 import java.util.Date;
 import java.util.List;

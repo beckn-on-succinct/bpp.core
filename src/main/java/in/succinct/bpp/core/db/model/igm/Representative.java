@@ -5,7 +5,7 @@ import com.venky.swf.db.annotations.column.UNIQUE_KEY;
 import com.venky.swf.db.annotations.column.validations.Enumeration;
 import com.venky.swf.db.model.Model;
 import com.venky.swf.plugins.collab.db.model.user.User;
-import in.succinct.bpp.core.db.model.igm.config.Subscriber;
+import in.succinct.bpp.core.db.model.Subscriber;
 import in.succinct.bpp.core.db.model.igm.config.Channel;
 
 

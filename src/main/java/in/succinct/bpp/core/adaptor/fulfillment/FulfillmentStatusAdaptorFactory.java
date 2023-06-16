@@ -1,8 +1,8 @@
-package in.succinct.bpp.core.adaptor;
+package in.succinct.bpp.core.adaptor.fulfillment;
 
 import com.venky.core.util.ObjectHolder;
 import com.venky.extension.Registry;
-import in.succinct.bpp.core.db.model.ProviderConfig;
+import in.succinct.bpp.core.adaptor.CommerceAdaptor;
 
 public class FulfillmentStatusAdaptorFactory {
     private static volatile FulfillmentStatusAdaptorFactory sSoleInstance;

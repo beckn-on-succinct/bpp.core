@@ -7,6 +7,7 @@ import com.venky.swf.plugins.collab.db.model.user.User;
 import in.succinct.beckn.Contact;
 import in.succinct.beckn.Context;
 import in.succinct.beckn.Issue.EscalationLevel;
+import in.succinct.beckn.Issue.Status;
 import in.succinct.beckn.IssueCategory;
 import in.succinct.beckn.IssueSubCategory;
 import in.succinct.beckn.Odr.Odrs;
@@ -25,19 +26,18 @@ import in.succinct.beckn.Resolution.ResolutionAction;
 import in.succinct.beckn.Resolution.ResolutionStatus;
 import in.succinct.beckn.SelectedOdrs;
 import in.succinct.beckn.SelectedOdrs.SelectedOdrsList;
-import in.succinct.beckn.Status;
+
 import in.succinct.beckn.Time;
-import in.succinct.bpp.core.adaptor.IssueTracker;
-import in.succinct.bpp.core.adaptor.IssueTrackerFactory;
-import in.succinct.bpp.core.db.model.ProviderConfig.IssueTrackerConfig;
+import in.succinct.bpp.core.adaptor.CommerceAdaptor;
+import in.succinct.bpp.core.adaptor.igm.IssueTracker;
+import in.succinct.bpp.core.adaptor.igm.IssueTrackerFactory;
+import in.succinct.bpp.core.db.model.Subscriber;
 import in.succinct.bpp.core.db.model.igm.Issue;
 import in.succinct.bpp.core.db.model.igm.Representative;
 import in.succinct.bpp.core.db.model.igm.config.Application;
 import in.succinct.bpp.core.db.model.igm.config.Odr;
 import in.succinct.bpp.core.db.model.igm.config.PreferredOdr;
-import in.succinct.bpp.core.db.model.igm.config.Subscriber;
 
-import java.lang.reflect.InvocationTargetException;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -45,10 +45,10 @@ import java.time.temporal.ChronoUnit;
 
 public class SuccinctIssueTracker extends IssueTracker {
     static {
-        IssueTrackerFactory.getInstance().registerAdaptor("internal",SuccinctIssueTracker.class);
+        IssueTrackerFactory.getInstance().registerAdaptor("default",SuccinctIssueTracker.class);
     }
-    public SuccinctIssueTracker(IssueTrackerConfig config) {
-        super(config);
+    public SuccinctIssueTracker(CommerceAdaptor adaptor) {
+        super(adaptor);
     }
 
     @Override

@@ -1,6 +1,7 @@
 package in.succinct.bpp.core.db.model.igm.config;
 
 import com.venky.swf.db.model.Model;
+import in.succinct.bpp.core.db.model.Subscriber;
 
 // Resolution source
 public interface Channel extends Model {
