@@ -41,8 +41,8 @@ public interface Settlement extends Model {
     public void setDeductionByCollector(double deductionByCollector);
 
     // invoice_amount - buyer_app_fee - gst_on_buyer_app_fee
-    public double getClaimedSettledAmount();
-    public void setClaimedSettledAmount(double settledAmount);
+    public double getSettledAmount();
+    public void setSettledAmount(double settledAmount);
 
     @Enumeration(enumClass = "in.succinct.beckn.SettlementDetail.SettlementType")
     public String getSettlementType();
@@ -53,8 +53,8 @@ public interface Settlement extends Model {
     public void setSettlementPhase(String settlementPhase);
 
     // claimed_settled_amount - deduction_by_collector.
-    public double getClaimedBankCreditAmount();
-    public void setClaimedBankCreditAmount(double bankCreditedAmount);
+    public double getExpectedCreditInBank();
+    public void setExpectedCreditInBank(double bankCreditedAmount);
 
 
     public double getCGst();
@@ -86,18 +86,18 @@ public interface Settlement extends Model {
     public String getSettlementId();
     public void setSettlementId(String settlementId);
 
-    @Enumeration(enumClass = "in.succinct.beckn.recon.Settlement.SettledOrder.OrderReconStatus")
+    @Enumeration(enumClass = "in.succinct.beckn.Order.OrderReconStatus")
     public String getOrderReconStatus();
     public void setOrderReconStatus(String orderReconStatus);
 
-    @Enumeration(enumClass = "in.succinct.beckn.recon.Settlement.SettledOrder.ReconStatus")
+    @Enumeration(enumClass = "in.succinct.beckn.Order.ReconStatus")
     public String getReconStatus();
     public void setReconStatus(String reconStatus);
 
     public Double getDiffAmount();
     public void setDiffAmount(Double diffAmount);
 
-    @Enumeration(enumClass = "in.succinct.beckn.recon.Settlement.SettledOrder.ReconStatus")
+    @Enumeration(enumClass = "in.succinct.beckn.Order.ReconStatus")
     public String getCounterpartyReconStatus();
     public void setCounterpartyReconStatus(String reconStatus);
 

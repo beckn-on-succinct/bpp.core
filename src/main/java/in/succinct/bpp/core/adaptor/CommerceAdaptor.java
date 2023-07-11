@@ -7,9 +7,11 @@ import com.venky.swf.db.model.application.ApplicationPublicKey;
 import com.venky.swf.db.model.application.ApplicationUtil;
 import com.venky.swf.db.model.application.api.EndPoint;
 import com.venky.swf.plugins.beckn.messaging.Subscriber;
+import com.venky.swf.plugins.collab.db.model.participants.admin.Company;
 import in.succinct.beckn.CancellationReasons;
 import in.succinct.beckn.FeedbackCategories;
 import in.succinct.beckn.Message;
+import in.succinct.beckn.Organization;
 import in.succinct.beckn.RatingCategories;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.ReturnReasons;
@@ -19,8 +21,11 @@ import in.succinct.bpp.core.adaptor.igm.IssueTracker;
 import in.succinct.bpp.core.adaptor.igm.IssueTrackerFactory;
 import in.succinct.bpp.core.adaptor.rating.RatingCollector;
 import in.succinct.bpp.core.adaptor.rating.RatingCollectorFactory;
+import in.succinct.bpp.core.adaptor.rsp.ReceiverReconProvider;
+import in.succinct.bpp.core.adaptor.rsp.ReceiverReconProviderFactory;
 import in.succinct.bpp.core.db.model.ProviderConfig;
 
+import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.Map;
 
@@ -32,16 +37,18 @@ public abstract class CommerceAdaptor{
     private final FulfillmentStatusAdaptor fulfillmentStatusAdaptor ;
     private final IssueTracker issueTracker;
     private final RatingCollector ratingCollector;
+    private final ReceiverReconProvider receiverReconProvider;
 
     public CommerceAdaptor(Map<String,String> configuration, Subscriber subscriber) {
         this.configuration = configuration;
         this.subscriber = subscriber;
         String key = configuration.keySet().stream().filter(k->k.endsWith(".provider.config")).findAny().get();
-        providerConfig = new ProviderConfig(this.configuration.get(key));
+        this.providerConfig = new ProviderConfig(this.configuration.get(key));
         this.subscriber.setOrganization(providerConfig.getOrganization());
         this.fulfillmentStatusAdaptor = FulfillmentStatusAdaptorFactory.getInstance().createAdaptor(this);
         this.issueTracker = providerConfig.getIssueTrackerConfig() == null ? null : IssueTrackerFactory.getInstance().createIssueTracker(this);
         this.ratingCollector = providerConfig.getRatingCollectorConfig() == null ? null : RatingCollectorFactory.getInstance().createRatingCollector(this);
+        this.receiverReconProvider = providerConfig.getReceiverReconProviderConfig() == null ? null : ReceiverReconProviderFactory.getInstance().createReceiverReconProvider(this);
         this.application = getApplication(getSubscriber().getAppId());
     }
     public Application getApplication(String appId){
@@ -85,6 +92,9 @@ public abstract class CommerceAdaptor{
 
     public IssueTracker getIssueTracker() {
         return issueTracker;
+    }
+    public ReceiverReconProvider getReceiverReconProvider(){
+        return receiverReconProvider;
     }
 
     public RatingCollector getRatingCollector() {
@@ -158,4 +168,18 @@ public abstract class CommerceAdaptor{
 
     }
 
+    public Company createCompany(Organization organization) {
+        Company company = Database.getTable(Company.class).newRecord();
+        company.setName(organization.getName());
+        company = Database.getTable(Company.class).getRefreshed(company);
+        if (organization.getDateOfIncorporation() != null) {
+            company.setDateOfIncorporation(new Date(organization.getDateOfIncorporation().getTime()));
+        }
+        if (organization.getEmail() != null){
+            String domain = organization.getEmail().substring(organization.getEmail().indexOf('@')+1);
+            company.setDomainName(domain);
+        }
+        company.save();
+        return company;
+    }
 }

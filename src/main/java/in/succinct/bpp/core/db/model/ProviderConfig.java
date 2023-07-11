@@ -16,6 +16,7 @@ import in.succinct.beckn.Organization;
 import in.succinct.beckn.SellerException.DistanceServiceabilityError;
 import in.succinct.beckn.SellerException.DropoffLocationServiceabilityError;
 import in.succinct.beckn.Time;
+import in.succinct.bpp.core.adaptor.rsp.ReceiverReconProvider;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
@@ -170,6 +171,11 @@ public class ProviderConfig extends BecknObject {
         return get(RatingCollectorConfig.class,"rating_collector_config");
     }
 
+    public ReceiverReconProviderConfig getReceiverReconProviderConfig(){
+        return get(ReceiverReconProviderConfig.class, "receiver_recon_provider_config");
+    }
+
+
 
     public double getGstWithheldPercent(){
         return getDouble("gst_withheld_percent",1.0);
@@ -192,7 +198,7 @@ public class ProviderConfig extends BecknObject {
     }
 
     public double getBuyerAppCommissionGstPct(){
-        return getDouble("buyer_app_commission_gst_pct");
+        return getDouble("buyer_app_commission_gst_pct",18.0D);
     }
     public void setBuyerAppCommissionGstPct(double buyer_app_commission_gst_pct){
         set("buyer_app_commission_gst_pct",buyer_app_commission_gst_pct);
@@ -257,6 +263,14 @@ public class ProviderConfig extends BecknObject {
 
 
     public static class RatingCollectorConfig extends BecknObject {
+        public String getName(){
+            return get("name");
+        }
+        public void setName(String name){
+            set("name",name);
+        }
+    }
+    public static class ReceiverReconProviderConfig extends BecknObject{
         public String getName(){
             return get("name");
         }

@@ -15,6 +15,7 @@ public abstract class IssueTracker {
     public CommerceAdaptor getAdaptor() {
         return adaptor;
     }
+    public abstract Request createNetworkResponse(Request response);
 
     public abstract void save(Request request, Request response); //Create or update issue
 

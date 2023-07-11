@@ -11,12 +11,13 @@ import in.succinct.bpp.core.db.model.igm.config.Channel;
 
 public interface Representative extends Model {
     @UNIQUE_KEY
-    public Long getIssueId();
-    public void setIssueId(Long id);
+    @IS_NULLABLE(false)
+    public long getIssueId();
+    public void setIssueId(long id);
     public Issue getIssue();
 
     @UNIQUE_KEY
-    @Enumeration(enumClass = "in.succinct.beckn.Representative.Role")
+    @Enumeration(enumClass = "in.succinct.beckn.Role")
     //COMPLAINANT_PARTY,COMPLAINANT_PLATFORM, COMPLAINANT_GRO
     public String getRole();
     public void setRole(String role);

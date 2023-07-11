@@ -11,6 +11,7 @@ import com.venky.swf.db.model.Model;
 import in.succinct.beckn.Fulfillment.FulfillmentStatus;
 import in.succinct.beckn.Order.Status;
 import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptor.FulfillmentStatusAudit;
+import in.succinct.bpp.core.db.model.rsp.Settlement;
 
 import java.util.Date;
 import java.util.List;
@@ -86,4 +87,6 @@ public interface BecknOrderMeta extends Model {
     public String getTrackingUrl();
     public void setTrackingUrl(String trackingUrl);
 
+
+    public List<Settlement>  getSettlements();
 }

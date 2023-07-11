@@ -36,6 +36,38 @@ public abstract class NetworkApiAdaptor {
         return networkAdaptor;
     }
 
+    public void call_by_pass(CommerceAdaptor adaptor, Map<String,String> headers, Request request, Request response){
+        try {
+            request.setObjectCreator(getNetworkAdaptor().getObjectCreator(adaptor.getSubscriber().getDomain()));
+            response.setObjectCreator(getNetworkAdaptor().getObjectCreator(adaptor.getSubscriber().getDomain()));
+
+            createReplyContext(adaptor.getSubscriber(),request,response);
+            request.getContext().setNetworkId(getNetworkAdaptor().getId());
+            response.getContext().setNetworkId(getNetworkAdaptor().getId());
+
+            Method method = getClass().getMethod(request.getContext().getAction(), CommerceAdaptor.class, Request.class, Request.class);
+            method.invoke(this, adaptor,request, response);
+
+            response.getContext().setBppId(adaptor.getSubscriber().getSubscriberId());
+            response.getContext().setBppUri(adaptor.getSubscriber().getSubscriberUrl());
+
+            log("ToApplication",request,headers,response,"/" + request.getContext().getAction());
+
+            if (!response.isSuppressed()) {
+                log("FromNetwork->ToNetwork", request, headers, response, "/" + request.getContext().getAction());
+            }
+
+        }catch (BecknException ex){
+            throw ex;
+        }catch (Exception ex){
+            BecknException e =  (BecknException) ExceptionUtil.getEmbeddedException(ex,BecknException.class);
+            if (e == null) {
+                e = new GenericBusinessError(ExceptionUtil.getRootCause(ex).getMessage());
+            }
+            Config.instance().getLogger(getClass().getName()).log(Level.WARNING,e.getMessage(),ex);
+            throw e;
+        }
+    }
     public void call(CommerceAdaptor adaptor, Map<String,String> headers, Request request, Request response){
         try {
             request.setObjectCreator(getNetworkAdaptor().getObjectCreator(adaptor.getSubscriber().getDomain()));
@@ -187,8 +219,10 @@ public abstract class NetworkApiAdaptor {
         newContext.setBppUri(subscriber.getSubscriberUrl());
         to.setContext(newContext);
     }
-
     public void callback(CommerceAdaptor adaptor,Request reply) {
+        callback(adaptor,reply,false);
+    }
+    protected void callback(CommerceAdaptor adaptor,Request reply,boolean passthrough) {
 
         if (reply.getContext() == null){
             throw new RuntimeException("Create Context before sending callback");
@@ -199,9 +233,14 @@ public abstract class NetworkApiAdaptor {
         reply.getContext().setBppId(adaptor.getSubscriber().getSubscriberId());
         reply.getContext().setBppUri(adaptor.getSubscriber().getSubscriberUrl());
 
+        Request networkReply ;
+        if (passthrough) {
+            networkReply = reply;
+        }else {
+            networkReply = getNetworkAdaptor().getObjectCreator(adaptor.getSubscriber().getDomain()).create(Request.class);
+            networkReply.update(reply);
+        }
 
-        Request networkReply = getNetworkAdaptor().getObjectCreator(adaptor.getSubscriber().getDomain()).create(Request.class);
-        networkReply.update(reply);
         Map<String,Object> attributes = Database.getInstance().getCurrentTransaction().getAttributes();
         TaskManager.instance().executeAsync(new BppActionTask(this,adaptor, networkReply, new HashMap<>()) {
             @Override

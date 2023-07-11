@@ -18,7 +18,7 @@ public interface Subscriber extends Model {
     public void setApplicationId(Long id);
     public Application getApplication();
 
-    @UNIQUE_KEY("APP")
+    @UNIQUE_KEY("APP,SID,RSP_SID")
     public String getNetworkId();
     public void setNetworkId(String networkId);
 

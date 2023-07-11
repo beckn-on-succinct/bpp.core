@@ -345,7 +345,7 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
 
         if (BecknObject.class.isAssignableFrom(clazz)){
             if (!clazz.getPackageName().startsWith("in.succinct.beckn")){
-                throw new IllegalArgumentException("only classes  in.succinct.beckn.* are allowed");
+                return create(clazz);
             }
             String extensionPackage = getDomains().get(domainId).getExtensionPackage();
 
@@ -365,8 +365,13 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
             }
         }
 
+        return create(extendedClass);
+    }
+
+    @SuppressWarnings("unchecked")
+    private <B> B create(Class<?> bClass){
         try {
-            return (B)(extendedClass.getConstructor().newInstance());
+            return (B)(bClass.getConstructor().newInstance());
         }catch (Exception ex){
             throw new RuntimeException(ex);
         }

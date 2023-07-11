@@ -289,8 +289,10 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor{
         reply.setMessage(message);
 
         if (trackUrl != null) {
-            message.setTracking(new Tracking());
-            message.getTracking().setUrl(trackUrl);
+            Tracking tracking = new Tracking();
+            message.setTracking(tracking);
+            tracking.setUrl(trackUrl);
+            tracking.setStatus("active");
         }else {
             throw new TrackingNotSupported();
         }
@@ -347,12 +349,6 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor{
         tracker.status(request,reply);
     }
     public void receiver_recon(Request request ,Request reply){
-        reply.setSuppressed(true); // will be sent later as a callback.
-        JSONObject order_book = request.getMessage().get("order_book");
-        Orders orders = new Orders((JSONArray) order_book.get("orders"));
-        LocalOrderSynchronizer synchronizer = LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(getSubscriber());
-        for (Order order : orders){
-            synchronizer.receiver_recon(order,getProviderConfig());
-        }
+        getReceiverReconProvider().receiver_recon(request,reply);
     }
 }

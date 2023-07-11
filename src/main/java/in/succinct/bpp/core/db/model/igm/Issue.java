@@ -1,8 +1,11 @@
 package in.succinct.bpp.core.db.model.igm;
 
 import com.venky.swf.db.annotations.column.ATTRIBUTE_GROUP;
+import com.venky.swf.db.annotations.column.COLUMN_DEF;
 import com.venky.swf.db.annotations.column.COLUMN_SIZE;
+import com.venky.swf.db.annotations.column.IS_NULLABLE;
 import com.venky.swf.db.annotations.column.UNIQUE_KEY;
+import com.venky.swf.db.annotations.column.defaulting.StandardDefault;
 import com.venky.swf.db.annotations.column.relationship.CONNECTED_VIA;
 import com.venky.swf.db.annotations.column.validations.Enumeration;
 import com.venky.swf.db.model.Model;
@@ -26,10 +29,11 @@ public interface Issue extends Model {
     public String getIssueSubCategory();
     public void setIssueSubCategory(String category);
 
+    @COLUMN_DEF(StandardDefault.BOOLEAN_FALSE)
     public boolean isSatisfactorilyClosed();
     public void setSatisfactorilyClosed(boolean satisfactorilyClosed);
 
-    @Enumeration(enumClass = "in.succinct.beckn.Status")
+    @Enumeration(enumClass = "in.succinct.beckn.Issue$Status")
     public String getStatus();
     public void setStatus(String status);
 
@@ -64,12 +68,13 @@ public interface Issue extends Model {
     public void setDisputeResolutionRemarks(String disputeResolutionRemarks);
 
     @ATTRIBUTE_GROUP("Resolution")
-    @Enumeration(enumClass = "in.succinct.beckn.igm.Resolution.ResolutionStatus")
+    @Enumeration(enumClass = "in.succinct.beckn.Resolution$ResolutionStatus")
     public String getResolutionStatus();
     public void setResolutionStatus(String resolutionStatus);
 
     @ATTRIBUTE_GROUP("Resolution")
-    @Enumeration(enumClass = "in.succinct.beckn.Resolution.ResolutionAction")
+    @Enumeration(enumClass = "in.succinct.beckn.Resolution$ResolutionAction")
+    @IS_NULLABLE
     public String getResolutionAction();
     public void setResolutionAction(String resolutionAction);
 
@@ -90,7 +95,7 @@ public interface Issue extends Model {
     public Representative getResolutionProvider();
 
 
-    @Enumeration(enumClass = "in.succinct.beckn.EscalationLevel")
+    @Enumeration(enumClass = "in.succinct.beckn.Issue$EscalationLevel")
     public String getEscalationLevel();
     public void setEscalationLevel(String escalationLevel);
 
