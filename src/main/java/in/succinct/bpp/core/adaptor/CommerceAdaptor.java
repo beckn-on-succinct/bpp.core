@@ -9,12 +9,16 @@ import com.venky.swf.db.model.application.api.EndPoint;
 import com.venky.swf.plugins.beckn.messaging.Subscriber;
 import com.venky.swf.plugins.collab.db.model.participants.admin.Company;
 import in.succinct.beckn.CancellationReasons;
+import in.succinct.beckn.CancellationReasons.CancellationReasonCode;
+import in.succinct.beckn.Descriptor;
 import in.succinct.beckn.FeedbackCategories;
 import in.succinct.beckn.Message;
+import in.succinct.beckn.Option;
 import in.succinct.beckn.Organization;
 import in.succinct.beckn.RatingCategories;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.ReturnReasons;
+import in.succinct.beckn.ReturnReasons.ReturnReasonCode;
 import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptor;
 import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptorFactory;
 import in.succinct.bpp.core.adaptor.igm.IssueTracker;
@@ -143,10 +147,22 @@ public abstract class CommerceAdaptor{
 
     public void get_cancellation_reasons(Request request, Request reply) {
         reply.setCancellationReasons(new CancellationReasons());
+        for (CancellationReasonCode cancellationReasonCode : CancellationReasonCode.values()) {
+            Option option = new Option();
+            option.setDescriptor(new Descriptor());
+            option.getDescriptor().setCode(CancellationReasonCode.convertor.toString(cancellationReasonCode));
+            reply.getReturnReasons().add(option);
+        }
     }
 
     public void get_return_reasons(Request request, Request reply) {
         reply.setReturnReasons(new ReturnReasons());
+        for (ReturnReasonCode returnReasonCode : ReturnReasonCode.values()) {
+            Option option = new Option();
+            option.setDescriptor(new Descriptor());
+            option.getDescriptor().setCode(ReturnReasonCode.convertor.toString(returnReasonCode));
+            reply.getReturnReasons().add(option);
+        }
     }
 
     public void get_rating_categories(Request request, Request reply) {

@@ -2,6 +2,9 @@ package in.succinct.bpp.core.adaptor;
 
 import com.venky.core.util.ObjectUtil;
 import com.venky.swf.plugins.beckn.messaging.Subscriber;
+import in.succinct.beckn.Cancellation;
+import in.succinct.beckn.Cancellation.CancelledBy;
+import in.succinct.beckn.CancellationReasons.CancellationReasonCode;
 import in.succinct.beckn.Catalog;
 import in.succinct.beckn.Categories;
 import in.succinct.beckn.Context;
@@ -15,8 +18,8 @@ import in.succinct.beckn.Items;
 import in.succinct.beckn.Location;
 import in.succinct.beckn.Locations;
 import in.succinct.beckn.Message;
+import in.succinct.beckn.Option;
 import in.succinct.beckn.Order;
-import in.succinct.beckn.Order.Orders;
 import in.succinct.beckn.Payment;
 import in.succinct.beckn.Payment.CollectedBy;
 import in.succinct.beckn.Payment.PaymentType;
@@ -24,22 +27,21 @@ import in.succinct.beckn.Payments;
 import in.succinct.beckn.Provider;
 import in.succinct.beckn.Providers;
 import in.succinct.beckn.Request;
+import in.succinct.beckn.SellerException;
 import in.succinct.beckn.SellerException.InvalidOrder;
 import in.succinct.beckn.SellerException.InvalidRequestError;
 import in.succinct.beckn.SellerException.TrackingNotSupported;
 import in.succinct.beckn.SellerException.UpdationNotPossible;
 import in.succinct.beckn.Tag;
 import in.succinct.beckn.Tracking;
-import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptor.FulfillmentStatusAudit;
 import in.succinct.bpp.core.adaptor.api.BecknIdHelper;
 import in.succinct.bpp.core.adaptor.api.BecknIdHelper.Entity;
+import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptor.FulfillmentStatusAudit;
 import in.succinct.bpp.core.adaptor.igm.IssueTracker;
-import in.succinct.bpp.core.db.model.LocalOrderSynchronizer;
 import in.succinct.bpp.core.db.model.LocalOrderSynchronizerFactory;
 import in.succinct.bpp.core.db.model.ProviderConfig;
 import in.succinct.bpp.core.db.model.ProviderConfig.DeliveryRules;
 import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
 
 import java.util.HashMap;
 import java.util.List;
@@ -310,6 +312,23 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor{
         if (order == null){
             throw new InvalidOrder();
         }
+
+        CancellationReasonCode code = request.getMessage().getEnum(CancellationReasonCode.class,"cancellation_reason_id",CancellationReasonCode.convertor);
+        if (code != null && code.isUsableByBuyerParty()){
+            Cancellation cancellation = order.getCancellation();
+            if (cancellation == null){
+                cancellation = new Cancellation();
+                order.setCancellation(cancellation);
+            }
+            cancellation.setSelectedReason(new Option());
+            cancellation.setCancelledBy(CancelledBy.BUYER);
+            cancellation.setTime(request.getContext().getTimestamp());
+            cancellation.getSelectedReason().setDescriptor(new Descriptor());
+            cancellation.getSelectedReason().getDescriptor().setCode(CancellationReasonCode.convertor.toString(code));
+        }else {
+            throw new SellerException.InvalidCancellationReason();
+        }
+
         Order cancelledOrder = cancel(order);
         Message message = new Message(); reply.setMessage(message);
         message.setOrder(cancelledOrder);

@@ -17,6 +17,7 @@ import in.succinct.beckn.BecknObjectsWithId;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.Subscriber;
 import in.succinct.bpp.core.adaptor.api.NetworkApiAdaptor;
+import in.succinct.json.JSONAwareWrapper;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
@@ -126,13 +127,14 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
         if (existingKey.getRawRecord().isNewRecord() || existingKey.getUpdatedAt().getTime() + getKeyValidityMillis() <= System.currentTimeMillis() ){
             KeyPair signPair = Crypt.getInstance().generateKeyPair(Request.SIGNATURE_ALGO, Request.SIGNATURE_ALGO_KEY_LENGTH);
             KeyPair encPair = Crypt.getInstance().generateKeyPair(Request.ENCRYPTION_ALGO, Request.ENCRYPTION_ALGO_KEY_LENGTH);
-
+            /*
             String keyNumber = existingKey.getAlias().substring(existingKey.getAlias().lastIndexOf('.')+2);// .k[0-9]*
             int nextKeyNumber = Integer.parseInt(keyNumber) + 1;
             String nextKeyId = String.format("%s.k%d",
                     existingKey.getAlias().substring(0,existingKey.getAlias().lastIndexOf('.')),
                     nextKeyNumber);
-
+            */
+            String nextKeyId = existingKey.getAlias();
             subscriber.setAlias(nextKeyId);
             subscriber.setUniqueKeyId(subscriber.getAlias());
 
@@ -377,15 +379,15 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
         }
     }
 
-    private transient Cache<String, BecknAwareCreator> becknObjectCreatorCache = new Cache<>(0,0) {
+    private transient Cache<String, JSONAwareWrapperCreator> becknObjectCreatorCache = new Cache<>(0,0) {
         @Override
-        protected BecknAwareCreator getValue(String domainId) {
-            return new BecknAwareCreator(){
+        protected JSONAwareWrapperCreator getValue(String domainId) {
+            return new JSONAwareWrapperCreator(){
                 @Override
                 public <B> B create(Class<B> clazz) {
                     B b = NetworkAdaptor.this.create(clazz,domainId);
-                    if (b instanceof BecknAware){
-                        ((BecknAware)b).setObjectCreator(this);
+                    if (b instanceof JSONAwareWrapper){
+                        ((JSONAwareWrapper)b).setObjectCreator(this);
                     }
                     return b;
                 }
@@ -393,7 +395,7 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
         }
     };
 
-    public BecknAwareCreator getObjectCreator(String domain){
+    public JSONAwareWrapperCreator getObjectCreator(String domain){
         return becknObjectCreatorCache.get(domain);
     }
 

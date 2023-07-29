@@ -73,6 +73,10 @@ public class ProviderConfig extends BecknObject {
         set("vpa", vpa);
     }
 
+    public double getMaxWriteOffAmountToAvoidRTO(){
+        return getDouble("max_write_off_amount_to_avoid_rto" , Double.POSITIVE_INFINITY);
+    }
+
 
     public Duration getTurnAroundTime() {
         String tat = get("turn_around_time");

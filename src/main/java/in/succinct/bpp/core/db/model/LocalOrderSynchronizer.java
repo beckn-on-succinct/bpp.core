@@ -24,6 +24,7 @@ import in.succinct.beckn.Payment.CommissionType;
 import in.succinct.beckn.Payment.PaymentStatus;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.SellerException;
+import in.succinct.beckn.SellerException.CancellationNotPossible;
 import in.succinct.beckn.SellerException.GenericBusinessError;
 import in.succinct.beckn.SellerException.InvalidOrder;
 import in.succinct.beckn.SellerException.InvalidRequestError;
@@ -197,6 +198,11 @@ public class LocalOrderSynchronizer {
                 Order lastKnown = new Order(meta.getOrderJson());
                 String action = request.getContext().getAction();
                 if (Subscriber.BPP_ACTION_SET.contains(action)) {
+                    if ("cancel".equals(action)){
+                        if (lastKnown.getFulfillment().getFulfillmentStatus().compareTo(FulfillmentStatus.Order_picked_up) >= 0){
+                            throw new SellerException.CancellationNotPossible("Order already shipped!");
+                        }
+                    }
                     // Incoming
                     if (!ObjectUtil.isVoid(order.getId())) {
                         if (ObjectUtil.isVoid(meta.getBapOrderId())) {

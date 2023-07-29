@@ -12,7 +12,7 @@ import in.succinct.beckn.Rating.RatingCategory;
 import in.succinct.beckn.Rating.Ratings;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.SellerException;
-import in.succinct.beckn.SellerException.EntityToRateNotFound;
+import in.succinct.beckn.SellerException.UnsupportedRatingCategory;
 import in.succinct.bpp.core.adaptor.CommerceAdaptor;
 import in.succinct.bpp.core.adaptor.rating.RatingCollector;
 import in.succinct.bpp.core.adaptor.rating.RatingCollectorFactory;
@@ -52,21 +52,21 @@ public class SuccinctRatingCollector extends RatingCollector {
             if (rating.getRatingCategory() == RatingCategory.Provider){
                 Provider provider = lastKnown.getProvider();
                 if (provider == null || !provider.isRateable()){
-                    throw new EntityToRateNotFound();
+                    throw new UnsupportedRatingCategory();
                 }
                 if (!ObjectUtil.equals(provider.getId(),rating.getId())){
-                    throw new EntityToRateNotFound();
+                    throw new UnsupportedRatingCategory();
                 }
             }else if (rating.getRatingCategory() == RatingCategory.Fulfillment){
                 Fulfillment fulfillment = lastKnown.getFulfillment();
                 if (fulfillment == null || !fulfillment.isRateable()){
-                    throw new EntityToRateNotFound();
+                    throw new UnsupportedRatingCategory();
                 }
                 if (!ObjectUtil.equals(fulfillment.getId(),rating.getId())){
-                    throw new EntityToRateNotFound();
+                    throw new UnsupportedRatingCategory();
                 }
             }else {
-                throw new EntityToRateNotFound();
+                throw new UnsupportedRatingCategory();
             }
 
             in.succinct.bpp.core.db.model.rating.Rating dbRating = Database.getTable(in.succinct.bpp.core.db.model.rating.Rating.class).newRecord();
