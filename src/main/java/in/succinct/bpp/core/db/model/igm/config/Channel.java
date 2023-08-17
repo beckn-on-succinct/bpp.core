@@ -1,5 +1,6 @@
 package in.succinct.bpp.core.db.model.igm.config;
 
+import com.venky.swf.db.annotations.column.pm.PARTICIPANT;
 import com.venky.swf.db.model.Model;
 import in.succinct.bpp.core.db.model.Subscriber;
 
@@ -18,6 +19,7 @@ public interface Channel extends Model {
     *
     *
     */
+    @PARTICIPANT
     public Long getApplicationId();
     public void setApplicationId(Long id);
     public Application getApplication();

@@ -312,23 +312,6 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor{
         if (order == null){
             throw new InvalidOrder();
         }
-
-        CancellationReasonCode code = request.getMessage().getEnum(CancellationReasonCode.class,"cancellation_reason_id",CancellationReasonCode.convertor);
-        if (code != null && code.isUsableByBuyerParty()){
-            Cancellation cancellation = order.getCancellation();
-            if (cancellation == null){
-                cancellation = new Cancellation();
-                order.setCancellation(cancellation);
-            }
-            cancellation.setSelectedReason(new Option());
-            cancellation.setCancelledBy(CancelledBy.BUYER);
-            cancellation.setTime(request.getContext().getTimestamp());
-            cancellation.getSelectedReason().setDescriptor(new Descriptor());
-            cancellation.getSelectedReason().getDescriptor().setCode(CancellationReasonCode.convertor.toString(code));
-        }else {
-            throw new SellerException.InvalidCancellationReason();
-        }
-
         Order cancelledOrder = cancel(order);
         Message message = new Message(); reply.setMessage(message);
         message.setOrder(cancelledOrder);

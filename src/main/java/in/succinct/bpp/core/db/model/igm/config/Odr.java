@@ -36,6 +36,6 @@ public interface Odr extends Model {
     public Long getSubscriberId();
     public void setSubscriberId(Long id);
     public Subscriber getSubscriber();
-
+    //This odr's subscriber.
 
 }

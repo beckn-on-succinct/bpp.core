@@ -55,20 +55,24 @@ import in.succinct.bpp.core.db.model.rsp.BankAccount;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 
 public class SuccinctIssueTracker extends IssueTracker {
     static {
-        IssueTrackerFactory.getInstance().registerAdaptor("default",SuccinctIssueTracker.class);
+        IssueTrackerFactory.getInstance().registerAdaptor("default", SuccinctIssueTracker.class);
     }
+
     public SuccinctIssueTracker(CommerceAdaptor adaptor) {
         super(adaptor);
     }
 
     @Override
     public void save(Request request, Request response) {
-        Issue issue = getDbIssue(request.getContext(),request.getMessage().getIssue());
+        Issue issue = getDbIssue(request.getContext(), request.getMessage().getIssue());
         in.succinct.beckn.Issue becknIssue = getBecknIssue(issue);
-        if (response.getMessage() == null){
+        if (response.getMessage() == null) {
             response.setMessage(new Message());
         }
         response.getMessage().setIssue(becknIssue);
@@ -76,44 +80,44 @@ public class SuccinctIssueTracker extends IssueTracker {
 
     @Override
     public void status(Request request, Request response) {
-        Issue dbIssue =  Database.getTable(Issue.class).newRecord();
+        Issue dbIssue = Database.getTable(Issue.class).newRecord();
         dbIssue.setIssueId(request.getMessage().getIssue().getId());
         dbIssue = Database.getTable(Issue.class).getRefreshed(dbIssue);
-        if (dbIssue.getRawRecord().isNewRecord()){
+        if (dbIssue.getRawRecord().isNewRecord()) {
             throw new RuntimeException("Invalid Issue");
         }
 
         in.succinct.beckn.Issue becknIssue = getBecknIssue(dbIssue);
-        if (response.getMessage() == null){
+        if (response.getMessage() == null) {
             response.setMessage(new Message());
         }
         response.getMessage().setIssue(becknIssue);
     }
 
-    public Issue getDbIssue(Context context, in.succinct.beckn.Issue issue){
+    public Issue getDbIssue(Context context, in.succinct.beckn.Issue issue) {
 
-        Issue dbIssue =  Database.getTable(Issue.class).newRecord();
+        Issue dbIssue = Database.getTable(Issue.class).newRecord();
         dbIssue.setIssueId(issue.getId());
         dbIssue = Database.getTable(Issue.class).getRefreshed(dbIssue);
-        if (dbIssue.getRawRecord().isNewRecord()){
+        if (dbIssue.getRawRecord().isNewRecord()) {
             if (issue.getCreatedAt() != null) {
                 dbIssue.setCreatedAt(new Timestamp(issue.getCreatedAt().getTime()));
             }
             dbIssue.save();
-            updateSelfInfo(context,issue,dbIssue);
-        }else {
+            updateSelfInfo(context, issue, dbIssue);
+        } else {
             in.succinct.beckn.Issue persisted = getBecknIssue(dbIssue);
             persisted.setOrder(null);
-            issue.update(persisted,false);
+            issue.update(persisted, false);
         }
 
 
-        Representative complainant = getDbRepresentative(context,dbIssue, issue.getComplainant());
+        Representative complainant = getDbRepresentative(context, dbIssue, issue.getComplainant());
         dbIssue.setComplainantId(complainant.getId());
 
         dbIssue.setEscalationLevel(issue.getEscalationLevel().name());
-        dbIssue.setExpectedResolutionTs(new Timestamp(issue.getCreatedAt().getTime() + issue.getExpectedResolutionTime().getDuration().getSeconds() * 1000 ));
-        dbIssue.setExpectedResponseTs(new Timestamp(issue.getCreatedAt().getTime()  + issue.getExpectedResponseTime().getDuration().getSeconds() * 1000));
+        dbIssue.setExpectedResolutionTs(new Timestamp(issue.getCreatedAt().getTime() + issue.getExpectedResolutionTime().getDuration().getSeconds() * 1000));
+        dbIssue.setExpectedResponseTs(new Timestamp(issue.getCreatedAt().getTime() + issue.getExpectedResponseTime().getDuration().getSeconds() * 1000));
         Resolution resolution = issue.getResolution();
         if (resolution != null) {
             dbIssue.setDisputeResolutionRemarks(resolution.getDisputeResolutionRemarks());
@@ -123,13 +127,15 @@ public class SuccinctIssueTracker extends IssueTracker {
             dbIssue.setResolutionAction(resolution.getResolutionAction().name());
             dbIssue.setResolutionStatus(resolution.getResolutionStatus().name());
         }
-        dbIssue.setResolutionProviderId(getDbRepresentative(context,dbIssue,issue.getResolutionProvider()).getId());
+        dbIssue.setResolutionProviderId(getDbRepresentative(context, dbIssue, issue.getResolutionProvider()).getId());
         dbIssue.setIssueCategory(issue.getIssueCategory().name());
         dbIssue.setIssueSubCategory(issue.getIssueSubCategory().name());
 
-        Representative respondent = getDbRepresentative(context,dbIssue,issue.getRespondent());
+        Representative respondent = getDbRepresentative(context, dbIssue, issue.getRespondent());
         dbIssue.setRespondentId(respondent.getId());
-        dbIssue.setOrderJson(issue.getOrder().toString());
+        if (issue.getOrder() != null) {
+            dbIssue.setOrderJson(issue.getOrder().toString());
+        }
         dbIssue.setSatisfactorilyClosed(issue.isSatisfied());
         dbIssue.setStatus(issue.getStatus().name());
         for (SelectedOdrs sordrs : issue.getSelectedOdrsList()) {
@@ -144,7 +150,7 @@ public class SuccinctIssueTracker extends IssueTracker {
             Odr odr = getDbOdr(context, dbIssue, issue.getFinalizedOdr());
             dbIssue.setFinalizedOdrId(odr.getId());
         }
-        if (issue.getNotes() == null){
+        if (issue.getNotes() == null) {
             issue.setNotes(new Notes());
         }
         for (Note note : issue.getNotes()) {
@@ -156,9 +162,9 @@ public class SuccinctIssueTracker extends IssueTracker {
                 dbNote.setIssueId(dbIssue.getId());
                 dbNote.setNotes(note.getDescription().getLongDesc());
 
-                Representative current = ObjectUtil.equals(issue.getComplainant().getSubscriberId(),note.getCreatedBy().getSubscriberId()) ? complainant :
-                                                ( ObjectUtil.equals(issue.getRespondent().getSubscriberId(),note.getCreatedBy().getSubscriberId()) ? respondent :
-                                                        getDbRepresentative(context,dbIssue,note.getCreatedBy()) );
+                Representative current = ObjectUtil.equals(issue.getComplainant().getSubscriberId(), note.getCreatedBy().getSubscriberId()) ? complainant :
+                        (ObjectUtil.equals(issue.getRespondent().getSubscriberId(), note.getCreatedBy().getSubscriberId()) ? respondent :
+                                getDbRepresentative(context, dbIssue, note.getCreatedBy()));
 
                 dbNote.setLoggedByRepresentorId(current.getId());
                 dbNote.setCreatedAt(new Timestamp(note.getCreatedAt().getTime()));
@@ -170,11 +176,13 @@ public class SuccinctIssueTracker extends IssueTracker {
                     }
                 }
                 dbNote.save();
-                for (String url : note.getDescription().getImages()) {
-                    NoteAttachment attachment = Database.getTable(NoteAttachment.class).newRecord();
-                    attachment.setUploadUrl(url);
-                    attachment.setNoteId(dbNote.getId());
-                    attachment.save();
+                if (note.getDescription().getImages() != null) {
+                    for (String url : note.getDescription().getImages()) {
+                        NoteAttachment attachment = Database.getTable(NoteAttachment.class).newRecord();
+                        attachment.setUploadUrl(url);
+                        attachment.setNoteId(dbNote.getId());
+                        attachment.save();
+                    }
                 }
 
             }/*else no modification needed */
@@ -186,14 +194,14 @@ public class SuccinctIssueTracker extends IssueTracker {
 
     private void updateSelfInfo(Context context, in.succinct.beckn.Issue issue, Issue dbIssue) {
         Complainant complainant = issue.getComplainant();
-        Respondent respondent = issue.getRespondent() ;
+        Respondent respondent = issue.getRespondent();
         in.succinct.beckn.Representative representative = null;
-        if (complainant == null){
+        if (complainant == null) {
             complainant = new Complainant();
             complainant.setRole(Role.COMPLAINANT_PLATFORM);
             issue.setComplainant(complainant);
             representative = complainant;
-        }else if (respondent == null){
+        } else if (respondent == null) {
             respondent = new Respondent();
             respondent.setRole(Role.RESPONDENT_PLATFORM);
             issue.setRespondent(respondent);
@@ -242,13 +250,21 @@ public class SuccinctIssueTracker extends IssueTracker {
         }
         boolean subscriberRepresentativeAdded = false;
         for (in.succinct.beckn.Representative issueRepresentative : issue.getRepresentatives()) {
-            if (ObjectUtil.equals(issueRepresentative.getSubscriberId(),subscriber.getSubscriberId())){
-                subscriberRepresentativeAdded = true ; break;
+            if (ObjectUtil.equals(issueRepresentative.getSubscriberId(), subscriber.getSubscriberId())) {
+                subscriberRepresentativeAdded = true;
+                break;
             }
         }
 
-        if (!subscriberRepresentativeAdded){
-            for (PossibleRepresentative possibleRepresentative : subscriber.getPossibleRepresentatives()) {
+        if (!subscriberRepresentativeAdded) {
+            String baseRole = representative.getRole().name().substring(0, representative.getRole().name().lastIndexOf("_"));
+            Set<String> rolesPendingToBeAdded = new HashSet<>();
+            for (String r : new String[]{"PLATFORM", "GRO", "ODR"}) {
+                rolesPendingToBeAdded.add(String.format("%s_%s", baseRole, r));
+            }
+
+            for (Iterator<PossibleRepresentative> iterator = subscriber.getPossibleRepresentatives().iterator(); iterator.hasNext() && !rolesPendingToBeAdded.isEmpty(); ) {
+                PossibleRepresentative possibleRepresentative = iterator.next();
                 User user = possibleRepresentative.getUser();
                 Representative dbRepresentative = Database.getTable(Representative.class).newRecord();
                 in.succinct.beckn.Representative aRepresentative = new in.succinct.beckn.Representative();
@@ -269,40 +285,43 @@ public class SuccinctIssueTracker extends IssueTracker {
                 aRepresentative.setRole(representative.getRole());
 
                 for (UserRole userRole : possibleRepresentative.getUser().getUserRoles()) {
-                    String roleName = aRepresentative.getRole().name();
+
                     if (userRole.getRole().getName().equals("GRO")) {
-                        String role = String.format("%s_GRO", roleName.substring(0, roleName.lastIndexOf("_")));
+                        String role = String.format("%s_GRO", baseRole);
                         aRepresentative.setRole(Role.valueOf(role));
-                        issue.getRepresentatives().add(aRepresentative);
                     } else if (userRole.getRole().getName().equals("IRO")) {
-                        String role = String.format("%s_PLATFORM", roleName.substring(0, roleName.lastIndexOf("_")));
+                        String role = String.format("%s_PLATFORM", baseRole);
                         aRepresentative.setRole(Role.valueOf(role));
-                        issue.getRepresentatives().add(aRepresentative);
                     } else if (userRole.getRole().getName().equals("ODR")) {
-                        String role = String.format("%s_ODR", roleName.substring(0, roleName.lastIndexOf("_")));
+                        String role = String.format("%s_ODR", baseRole);
                         aRepresentative.setRole(Role.valueOf(role));
-                        issue.getRepresentatives().add(aRepresentative);
                     }
                     dbRepresentative.setRole(aRepresentative.getRole().name());
                     dbRepresentative = Database.getTable(Representative.class).getRefreshed(dbRepresentative);
-                    dbRepresentative.save();
+                    if (dbRepresentative.getRawRecord().isNewRecord()) {
+                        dbRepresentative.save();
+                        issue.getRepresentatives().add(aRepresentative);
+                        rolesPendingToBeAdded.remove(dbRepresentative.getRole());
+                        if (representative.getRole() == aRepresentative.getRole()){
+                            representative.setInner(aRepresentative.getInner()); // Is what assigns the right person.
+                        }
+                    }
                 }
-
             }
         }
 
         if (issue.getSelectedOdrsList() == null) {
             issue.setSelectedOdrsList(new SelectedOdrsList());
         }
-        if (!subscriber.getPreferredOdrs().isEmpty() ){
-            SelectedOdrs selectedOdrs = null ;
-            for (SelectedOdrs x : issue.getSelectedOdrsList()){
-                if (ObjectUtil.equals(x.getRepresentative().getSubscriberId(),representative.getSubscriberId()) ){
+        if (!subscriber.getPreferredOdrs().isEmpty()) {
+            SelectedOdrs selectedOdrs = null;
+            for (SelectedOdrs x : issue.getSelectedOdrsList()) {
+                if (ObjectUtil.equals(x.getRepresentative().getSubscriberId(), representative.getSubscriberId())) {
                     selectedOdrs = x;
                     break;
                 }
             }
-            if (selectedOdrs == null ){
+            if (selectedOdrs == null) {
                 selectedOdrs = new SelectedOdrs();
                 issue.getSelectedOdrsList().add(selectedOdrs);
 
@@ -317,7 +336,7 @@ public class SuccinctIssueTracker extends IssueTracker {
 
     }
 
-    private Odr getDbOdr(Context context, Issue issue,  in.succinct.beckn.Odr odr) {
+    private Odr getDbOdr(Context context, Issue issue, in.succinct.beckn.Odr odr) {
         Odr dbOdr = Database.getTable(Odr.class).newRecord();
         dbOdr.setAboutInfo(odr.getAboutInfo());
         dbOdr.setCurrency(odr.getPricingModel().getPrice().getCurrency());
@@ -337,7 +356,7 @@ public class SuccinctIssueTracker extends IssueTracker {
 
     private Representative getDbRepresentative(Context context, Issue issue, in.succinct.beckn.Representative representative) {
         Company dbCompany = getOrganization(representative.getOrganization());
-        if (ObjectUtil.isVoid(dbCompany.getDomainName())){
+        if (ObjectUtil.isVoid(dbCompany.getDomainName())) {
             dbCompany.setDomainName(representative.getSubscriberId());
         }
         dbCompany.save();
@@ -360,9 +379,9 @@ public class SuccinctIssueTracker extends IssueTracker {
 
         Representative dbRepresentative = Database.getTable(Representative.class).newRecord();
 
-        Contact contact =representative.getContact();
+        Contact contact = representative.getContact();
         Person person = representative.getPerson();
-        if (contact != null || person != null){
+        if (contact != null || person != null) {
             User user = Database.getTable(User.class).newRecord();
             if (contact != null) {
                 user.setEmail(contact.getEmail());
@@ -387,12 +406,13 @@ public class SuccinctIssueTracker extends IssueTracker {
 
 
     }
-    public Request createNetworkResponse(Request becknResponse){
+
+    public Request createNetworkResponse(Request becknResponse) {
         return becknResponse;
     }
 
 
-    public static in.succinct.beckn.Issue getBecknIssue(Issue dbIssue){
+    public static in.succinct.beckn.Issue getBecknIssue(Issue dbIssue) {
         in.succinct.beckn.Issue issue = new in.succinct.beckn.Issue();
         issue.setId(dbIssue.getIssueId());
         issue.setComplainant(getBecknRepresentative(dbIssue.getComplainant(), Complainant.class));
@@ -418,6 +438,9 @@ public class SuccinctIssueTracker extends IssueTracker {
             }
             if (!resolution.getInner().isEmpty()) {
                 issue.setResolution(resolution);
+                if (resolution.getResolutionStatus() == ResolutionStatus.RESOLVED && resolution.getResolutionAction() == ResolutionAction.REFUND) {
+                    resolution.setRefundAmount(dbIssue.getRefundAmount());
+                }
             }
         }
         issue.setResolutionProvider(getBecknRepresentative(dbIssue.getResolutionProvider(), in.succinct.beckn.Representative.class));
@@ -454,10 +477,10 @@ public class SuccinctIssueTracker extends IssueTracker {
             note.setId(dbNote.getNoteId());
             note.setAction(new Action());
 
-            if (ObjectUtil.equals(dbNote.getLoggedByRepresentor().getSubscriber().getSubscriberId(),issue.getComplainant().getSubscriberId())) {
+            if (ObjectUtil.equals(dbNote.getLoggedByRepresentor().getSubscriber().getSubscriberId(), issue.getComplainant().getSubscriberId())) {
                 note.getAction().setComplainantAction(RepresentativeAction.valueOf(dbNote.getAction()));
                 note.setCreatedBy(issue.getComplainant());
-            }else {
+            } else {
                 note.getAction().setRespondentAction(RepresentativeAction.valueOf(dbNote.getAction()));
                 note.setCreatedBy(issue.getRespondent());
             }
@@ -470,6 +493,7 @@ public class SuccinctIssueTracker extends IssueTracker {
             for (NoteAttachment attachment : dbNote.getAttachments()) {
                 note.getDescription().getImages().add(attachment.getAttachmentUrl());
             }
+            note.setCreatedAt(dbNote.getCreatedAt());
             issue.getNotes().add(note);
         }
 
@@ -477,7 +501,7 @@ public class SuccinctIssueTracker extends IssueTracker {
     }
 
     private static in.succinct.beckn.Odr getBecknOdr(Odr dbOdr) {
-        if (dbOdr == null){
+        if (dbOdr == null) {
             return null;
         }
         in.succinct.beckn.Odr becknOdr = new in.succinct.beckn.Odr();
@@ -497,7 +521,7 @@ public class SuccinctIssueTracker extends IssueTracker {
     }
 
     private Company getOrganization(Organization organization) {
-        if (organization == null){
+        if (organization == null) {
             return null;
         }
 
@@ -517,7 +541,7 @@ public class SuccinctIssueTracker extends IssueTracker {
         return representative;
     }
 
-    private static <T extends in.succinct.beckn.Representative> T getBecknRepresentative(Representative dbRepresentative, Class<T> clazz)  {
+    private static <T extends in.succinct.beckn.Representative> T getBecknRepresentative(Representative dbRepresentative, Class<T> clazz) {
 
         T representative = null;
         try {

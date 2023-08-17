@@ -3,9 +3,13 @@ package in.succinct.bpp.core.extensions;
 import com.venky.core.util.ObjectUtil;
 import com.venky.swf.db.Database;
 import com.venky.swf.db.extensions.BeforeModelValidateExtension;
+import in.succinct.beckn.Issue.EscalationLevel;
 import in.succinct.beckn.Note.RepresentativeAction;
+import in.succinct.beckn.Representative.Respondent;
+import in.succinct.beckn.Role;
 import in.succinct.bpp.core.db.model.igm.Issue;
 import in.succinct.bpp.core.db.model.igm.Note;
+import in.succinct.bpp.core.db.model.igm.Representative;
 
 import javax.xml.crypto.Data;
 
@@ -41,6 +45,28 @@ public class BeforeValidateIssue extends BeforeModelValidateExtension<Issue> {
                 note.setIssueId(model.getId());
                 note.setAction(RepresentativeAction.convertor.toString(RepresentativeAction.RESOLVED));
                 note.save();
+            }
+        }
+        Representative respondent = model.getRespondent();
+        if (ObjectUtil.isVoid(model.getEscalationLevel())){
+            model.setEscalationLevel(EscalationLevel.ISSUE.name());
+        }
+
+        EscalationLevel currentEscalationLevel = EscalationLevel.valueOf(model.getEscalationLevel());
+
+        Role requiredRespondentRole;
+        if (currentEscalationLevel == EscalationLevel.ISSUE){
+            requiredRespondentRole = Role.RESPONDENT_PLATFORM;
+        }else {
+            requiredRespondentRole = Role.RESPONDENT_GRO;
+        }
+
+        for (Representative representor : model.getRepresentors()) {
+            Role representorRole = Role.valueOf(representor.getRole());
+
+            if (requiredRespondentRole == representorRole ){
+                model.setRespondentId(representor.getId());
+                break;
             }
         }
     }

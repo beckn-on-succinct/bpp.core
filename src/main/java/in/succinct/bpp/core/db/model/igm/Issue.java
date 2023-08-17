@@ -6,7 +6,10 @@ import com.venky.swf.db.annotations.column.COLUMN_SIZE;
 import com.venky.swf.db.annotations.column.IS_NULLABLE;
 import com.venky.swf.db.annotations.column.UNIQUE_KEY;
 import com.venky.swf.db.annotations.column.defaulting.StandardDefault;
+import com.venky.swf.db.annotations.column.indexing.Index;
+import com.venky.swf.db.annotations.column.pm.PARTICIPANT;
 import com.venky.swf.db.annotations.column.relationship.CONNECTED_VIA;
+import com.venky.swf.db.annotations.column.ui.PROTECTION;
 import com.venky.swf.db.annotations.column.validations.Enumeration;
 import com.venky.swf.db.model.Model;
 import in.succinct.bpp.core.db.model.igm.config.Odr;
@@ -17,22 +20,28 @@ import java.util.List;
 public interface Issue extends Model {
 
     @UNIQUE_KEY
+    @Index
     public String getIssueId();
     public void setIssueId(String issueId);
 
 
+    @Index
     @Enumeration(enumClass = "in.succinct.beckn.IssueCategory")
     public String getIssueCategory();
     public void setIssueCategory(String category);
 
+    @Index
     @Enumeration(enumClass = "in.succinct.beckn.IssueSubCategory")
     public String getIssueSubCategory();
     public void setIssueSubCategory(String category);
 
+    @PROTECTION
     @COLUMN_DEF(StandardDefault.BOOLEAN_FALSE)
     public boolean isSatisfactorilyClosed();
     public void setSatisfactorilyClosed(boolean satisfactorilyClosed);
 
+    @PROTECTION
+    @Index
     @Enumeration(enumClass = "in.succinct.beckn.Issue$Status")
     public String getStatus();
     public void setStatus(String status);
@@ -44,9 +53,11 @@ public interface Issue extends Model {
     public Odr getFinalizedOdr();
 
 
+    @Index
     public Timestamp getExpectedResponseTs();
     public void setExpectedResponseTs(Timestamp expectedResponseTs);
 
+    @Index
     public Timestamp getExpectedResolutionTs();
     public void setExpectedResolutionTs(Timestamp expectedResolutionTs);
 
@@ -69,22 +80,28 @@ public interface Issue extends Model {
 
     @ATTRIBUTE_GROUP("Resolution")
     @Enumeration(enumClass = "in.succinct.beckn.Resolution$ResolutionStatus")
+    @Index
     public String getResolutionStatus();
     public void setResolutionStatus(String resolutionStatus);
 
     @ATTRIBUTE_GROUP("Resolution")
     @Enumeration(enumClass = "in.succinct.beckn.Resolution$ResolutionAction")
     @IS_NULLABLE
+    @Index
     public String getResolutionAction();
     public void setResolutionAction(String resolutionAction);
 
 
     public List<Representative> getRepresentors();
 
+    @PARTICIPANT
+    @Index
     public Long getComplainantId();
     public void setComplainantId(Long id);
     public Representative getComplainant();
 
+    @PARTICIPANT
+    @Index
     public Long getRespondentId();
     public void setRespondentId(Long id);
     public Representative getRespondent();
@@ -111,8 +128,12 @@ public interface Issue extends Model {
 
 
     @COLUMN_SIZE(4096)
+    @Index
     public String getOrderJson();
     public void setOrderJson(String orderJson);
 
 
+    @IS_NULLABLE
+    public Double getRefundAmount();
+    public void setRefundAmount(Double refundAmount);
 }

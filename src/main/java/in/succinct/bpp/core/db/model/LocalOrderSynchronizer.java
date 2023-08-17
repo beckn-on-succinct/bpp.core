@@ -7,13 +7,17 @@ import com.venky.swf.db.JdbcTypeHelper.TypeConverter;
 import com.venky.swf.plugins.beckn.messaging.Subscriber;
 import in.succinct.beckn.BreakUp.BreakUpElement;
 import in.succinct.beckn.BreakUp.BreakUpElement.BreakUpCategory;
+import in.succinct.beckn.Cancellation;
+import in.succinct.beckn.Cancellation.CancelledBy;
 import in.succinct.beckn.Context;
+import in.succinct.beckn.Descriptor;
 import in.succinct.beckn.Fulfillment;
 import in.succinct.beckn.Fulfillment.FulfillmentStatus;
 import in.succinct.beckn.Fulfillment.FulfillmentType;
 import in.succinct.beckn.Intent;
 import in.succinct.beckn.Item;
 import in.succinct.beckn.Locations;
+import in.succinct.beckn.Option;
 import in.succinct.beckn.Order;
 import in.succinct.beckn.Order.ReconStatus;
 import in.succinct.beckn.Order.Status;
@@ -89,7 +93,10 @@ public class LocalOrderSynchronizer {
             if (meta.getRawRecord().isNewRecord()) {
                 meta.setOrderJson("{}");
                 meta.setStatusUpdatedAtJson("{}");
+            }else {
+                meta = Database.getTable(BecknOrderMeta.class).lock(meta.getId());
             }
+
             map.put(transactionId, meta);
         }
         return meta;
@@ -160,8 +167,16 @@ public class LocalOrderSynchronizer {
     public Order getLastKnownOrder(String transactionId) {
         return getLastKnownOrder(getOrderMeta(transactionId));
     }
+    public void sync(String transactionId,Order order){
+        BecknOrderMeta meta =getOrderMeta(transactionId);
+        sync(meta,order);
+    }
 
-    public Order getLastKnownOrder(BecknOrderMeta meta) {
+    private void sync(BecknOrderMeta meta, Order order){
+        meta.setOrderJson(order.getInner().toString());
+    }
+
+    private Order getLastKnownOrder(BecknOrderMeta meta) {
         return new Order(meta.getOrderJson());
     }
 
@@ -193,14 +208,27 @@ public class LocalOrderSynchronizer {
             if (order == null && !ObjectUtil.isVoid(request.getMessage().getOrderId())) {
                 order = new Order();
                 order.setId(request.getMessage().getOrderId());
+                request.getMessage().setOrder(order);
             }
             if (order != null) {
                 Order lastKnown = new Order(meta.getOrderJson());
                 String action = request.getContext().getAction();
                 if (Subscriber.BPP_ACTION_SET.contains(action)) {
                     if ("cancel".equals(action)){
+                        if (request.getMessage().getCancellationReasonCode() != null){
+                            if (order.getCancellation() == null){
+                                order.setCancellation( new Cancellation());
+                                order.getCancellation().setSelectedReason(new Option());
+                                order.getCancellation().getSelectedReason().setDescriptor(new Descriptor());
+                                order.getCancellation().getSelectedReason().getDescriptor().setCode(request.getMessage().getCancellationReasonCode().name());
+                                order.getCancellation().setCancelledBy(CancelledBy.BUYER);
+                            }
+                        }
                         if (lastKnown.getFulfillment().getFulfillmentStatus().compareTo(FulfillmentStatus.Order_picked_up) >= 0){
-                            throw new SellerException.CancellationNotPossible("Order already shipped!");
+                            throw new SellerException.CancellationNotPossible("Order already closed!");
+                        }
+                        if (order.getCancellation() != null) {
+                            lastKnown.setCancellation(order.getCancellation());
                         }
                     }
                     // Incoming
@@ -216,11 +244,6 @@ public class LocalOrderSynchronizer {
 
                     lastKnown.setProviderLocation(order.getProviderLocation());
                     lastKnown.setBilling(order.getBilling());
-                    if (action.equals("cancel")) {
-                        if (order.getCancellation() != null) {
-                            lastKnown.setCancellation(order.getCancellation());
-                        }
-                    }
 
                     if (order.getFulfillment() != null) {
                         lastKnown.setFulfillment(new Fulfillment());

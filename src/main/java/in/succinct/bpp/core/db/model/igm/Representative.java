@@ -1,7 +1,9 @@
 package in.succinct.bpp.core.db.model.igm;
 
 import com.venky.swf.db.annotations.column.IS_NULLABLE;
+import com.venky.swf.db.annotations.column.IS_VIRTUAL;
 import com.venky.swf.db.annotations.column.UNIQUE_KEY;
+import com.venky.swf.db.annotations.column.pm.PARTICIPANT;
 import com.venky.swf.db.annotations.column.validations.Enumeration;
 import com.venky.swf.db.model.Model;
 import com.venky.swf.plugins.collab.db.model.user.User;
@@ -10,6 +12,10 @@ import in.succinct.bpp.core.db.model.igm.config.Channel;
 
 
 public interface Representative extends Model {
+
+    @IS_VIRTUAL
+    public String getName() ;
+
     @UNIQUE_KEY
     @IS_NULLABLE(false)
     public long getIssueId();
@@ -23,6 +29,7 @@ public interface Representative extends Model {
     public void setRole(String role);
 
     @IS_NULLABLE(value = false)
+    @PARTICIPANT
     public Long getSubscriberId();
     public void setSubscriberId(Long id);
     public Subscriber getSubscriber();
@@ -33,6 +40,7 @@ public interface Representative extends Model {
     public Channel getChannel();
 
 
+    @PARTICIPANT
     public Long getUserId();
     public void setUserId(Long id);
     public User getUser();

@@ -1,7 +1,11 @@
 package in.succinct.bpp.core.db.model;
 
+import com.venky.swf.db.annotations.column.IS_NULLABLE;
+import com.venky.swf.db.annotations.column.IS_VIRTUAL;
 import com.venky.swf.db.annotations.column.UNIQUE_KEY;
+import com.venky.swf.db.annotations.column.pm.PARTICIPANT;
 import com.venky.swf.db.annotations.column.validations.Enumeration;
+import com.venky.swf.db.annotations.model.HAS_DESCRIPTION_FIELD;
 import com.venky.swf.db.model.Model;
 import in.succinct.bpp.core.db.model.igm.config.Application;
 import in.succinct.bpp.core.db.model.igm.config.Channel;
@@ -13,7 +17,12 @@ import in.succinct.bpp.core.db.model.rsp.BankAccount;
 import java.util.List;
 
 public interface Subscriber extends Model {
+
+    @IS_VIRTUAL
+    public String getName();
+
     @UNIQUE_KEY("APP")
+    @PARTICIPANT
     public Long getApplicationId();
     public void setApplicationId(Long id);
     public Application getApplication();

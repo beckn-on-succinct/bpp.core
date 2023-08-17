@@ -9,9 +9,15 @@ import com.venky.swf.plugins.background.core.TaskManager;
 import com.venky.swf.routing.Config;
 import in.succinct.beckn.BecknAware;
 import in.succinct.beckn.BecknException;
+import in.succinct.beckn.Cancellation;
+import in.succinct.beckn.Cancellation.CancelledBy;
+import in.succinct.beckn.CancellationReasons.CancellationReasonCode;
 import in.succinct.beckn.Context;
+import in.succinct.beckn.Descriptor;
+import in.succinct.beckn.Option;
 import in.succinct.beckn.Order;
 import in.succinct.beckn.Request;
+import in.succinct.beckn.SellerException;
 import in.succinct.beckn.SellerException.GenericBusinessError;
 import in.succinct.beckn.SellerException.InvalidOrder;
 import in.succinct.beckn.Subscriber;
@@ -159,6 +165,35 @@ public abstract class NetworkApiAdaptor {
     }
 
     public void cancel(CommerceAdaptor adaptor, Request request, Request reply) {
+        Order order = request.getMessage().getOrder();
+        if (order == null){
+            if (request.getMessage().getOrderId() != null){
+                order = new Order();
+                order.setId(request.getMessage().getOrderId());
+            }
+        }
+        if (order == null){
+            throw new InvalidOrder();
+        }
+
+        CancellationReasonCode code = request.getMessage().getCancellationReasonCode();
+        if (code != null && code.isUsableByBuyerParty()){
+            Cancellation cancellation = order.getCancellation();
+            if (cancellation == null){
+                cancellation = new Cancellation();
+                order.setCancellation(cancellation);
+            }
+            cancellation.setSelectedReason(new Option());
+            cancellation.setCancelledBy(CancelledBy.BUYER);
+            cancellation.setTime(request.getContext().getTimestamp());
+            cancellation.getSelectedReason().setDescriptor(new Descriptor());
+            cancellation.getSelectedReason().getDescriptor().setCode(CancellationReasonCode.convertor.toString(code));
+
+        }else {
+            throw new SellerException.InvalidCancellationReason();
+        }
+        LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(adaptor.getSubscriber()).sync(request,getNetworkAdaptor(),false);
+
         adaptor.cancel(request,reply);
 
     }
