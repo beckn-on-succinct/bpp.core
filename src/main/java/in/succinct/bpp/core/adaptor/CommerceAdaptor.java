@@ -8,8 +8,10 @@ import com.venky.swf.db.model.application.ApplicationUtil;
 import com.venky.swf.db.model.application.api.EndPoint;
 import com.venky.swf.plugins.beckn.messaging.Subscriber;
 import com.venky.swf.plugins.collab.db.model.participants.admin.Company;
+import com.venky.swf.plugins.collab.util.CompanyFinder;
 import in.succinct.beckn.CancellationReasons;
 import in.succinct.beckn.CancellationReasons.CancellationReasonCode;
+import in.succinct.beckn.Contact;
 import in.succinct.beckn.Descriptor;
 import in.succinct.beckn.FeedbackCategories;
 import in.succinct.beckn.Message;
@@ -19,6 +21,7 @@ import in.succinct.beckn.RatingCategories;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.ReturnReasons;
 import in.succinct.beckn.ReturnReasons.ReturnReasonCode;
+import in.succinct.beckn.User;
 import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptor;
 import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptorFactory;
 import in.succinct.bpp.core.adaptor.igm.IssueTracker;
@@ -184,16 +187,24 @@ public abstract class CommerceAdaptor{
 
     }
 
-    public Company createCompany(Organization organization) {
-        Company company = Database.getTable(Company.class).newRecord();
-        company.setName(organization.getName());
-        company = Database.getTable(Company.class).getRefreshed(company);
-        if (organization.getDateOfIncorporation() != null) {
-            company.setDateOfIncorporation(new Date(organization.getDateOfIncorporation().getTime()));
+    public Company createCompany(Organization organization, String subscriberId) {
+        User user = organization != null ? organization.getAuthorizedSignatory() : null ;
+        Contact contact = user == null ? null : user.getContact();
+        String email = contact == null ? null : contact.getEmail();
+        Company company = null;
+        if (email != null){
+            String domain = email.substring(email.indexOf('@')+1);
+            company = CompanyFinder.getInstance().find(domain);
         }
-        if (organization.getEmail() != null){
-            String domain = organization.getEmail().substring(organization.getEmail().indexOf('@')+1);
-            company.setDomainName(domain);
+        if (company == null ){
+            company = CompanyFinder.getInstance().find(subscriberId);
+        }
+
+        if (company.getRawRecord().isNewRecord()){
+            company.setName(organization.getName());
+            if (organization.getDateOfIncorporation() != null) {
+                company.setDateOfIncorporation(new Date(organization.getDateOfIncorporation().getTime()));
+            }
         }
         company.save();
         return company;

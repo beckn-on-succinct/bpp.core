@@ -1,11 +1,11 @@
 package in.succinct.bpp.core.adaptor.api;
 
 import com.venky.core.util.ExceptionUtil;
-import com.venky.core.util.ObjectUtil;
-import com.venky.swf.controller.annotations.RequireLogin;
 import com.venky.swf.db.Database;
 import com.venky.swf.db.JdbcTypeHelper.TypeConverter;
+import com.venky.swf.path._IPath;
 import com.venky.swf.plugins.background.core.TaskManager;
+import com.venky.swf.plugins.beckn.tasks.BecknApiCall;
 import com.venky.swf.routing.Config;
 import in.succinct.beckn.BecknAware;
 import in.succinct.beckn.BecknException;
@@ -28,6 +28,7 @@ import in.succinct.bpp.core.tasks.BppActionTask;
 import org.json.simple.JSONObject;
 
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -57,11 +58,12 @@ public abstract class NetworkApiAdaptor {
             response.getContext().setBppId(adaptor.getSubscriber().getSubscriberId());
             response.getContext().setBppUri(adaptor.getSubscriber().getSubscriberUrl());
 
-            log("ToApplication",request,headers,response,"/" + request.getContext().getAction());
+            log(MessageLogger.TO_APP,request,headers,response,"/" + request.getContext().getAction());
 
+            /*
             if (!response.isSuppressed()) {
                 log("FromNetwork->ToNetwork", request, headers, response, "/" + request.getContext().getAction());
-            }
+            }*/
 
         }catch (BecknException ex){
             throw ex;
@@ -97,15 +99,17 @@ public abstract class NetworkApiAdaptor {
             internalResponse.getContext().setBppId(adaptor.getSubscriber().getSubscriberId());
             internalResponse.getContext().setBppUri(adaptor.getSubscriber().getSubscriberUrl());
 
-            log("ToApplication",internalRequest,headers,internalResponse,"/" + internalRequest.getContext().getAction());
+            log(MessageLogger.TO_APP,internalRequest,headers,internalResponse,"/" + internalRequest.getContext().getAction());
 
             LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(adaptor.getSubscriber()).sync(internalResponse,getNetworkAdaptor(),true);
 
             response.update(internalResponse);
 
+            /*
             if (!response.isSuppressed()) {
                 log("FromNetwork->ToNetwork", request, headers, response, "/" + request.getContext().getAction());
             }
+             */
 
         }catch (BecknException ex){
             throw ex;
@@ -247,7 +251,8 @@ public abstract class NetworkApiAdaptor {
     }
 
     public void createReplyContext(Subscriber subscriber, Request from, Request to) {
-        Context newContext = ObjectUtil.clone(from.getContext());
+        Context newContext = new Context();
+        newContext.update(from.getContext());
         String action = from.getContext().getAction();
         newContext.setAction(action.startsWith("get_") ? action.substring(4) : "on_" + action);
         newContext.setBppId(subscriber.getSubscriberId());
@@ -277,14 +282,19 @@ public abstract class NetworkApiAdaptor {
         }
 
         Map<String,Object> attributes = Database.getInstance().getCurrentTransaction().getAttributes();
+        Map<String,Object> context = Database.getInstance().getContext();
         TaskManager.instance().executeAsync(new BppActionTask(this,adaptor, networkReply, new HashMap<>()) {
             @Override
             public Request generateCallBackRequest() {
                 Database.getInstance().getCurrentTransaction().setAttributes(attributes);
+                if (context != null){
+                    context.remove(_IPath.class.getName());
+                    Database.getInstance().setContext(context);
+                }
                 registerSignatureHeaders("Authorization");
-                log("ToApplication", networkReply, getHeaders(), networkReply, "/" + networkReply.getContext().getAction());
                 return networkReply;
             }
+
         }, false);
     }
 
@@ -296,6 +306,7 @@ public abstract class NetworkApiAdaptor {
             maskedHeaders.put(k, Config.instance().isDevelopmentEnvironment()? v : "***");
         });
         Config.instance().getLogger(BppActionTask.class.getName()).log(Level.INFO,String.format("%s|%s|%s|%s|%s",direction,request,headers,response,url));
+        MessageLoggerFactory.getInstance().log(direction,request,headers,response);
 
     }
 }

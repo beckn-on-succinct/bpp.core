@@ -373,6 +373,9 @@ public class LocalOrderSynchronizer {
     public List<FulfillmentStatusAudit> getFulfillmentStatusAudit(String transactionId) {
         return getOrderMeta(transactionId).getStatusAudits();
     }
+    public boolean hasOrderReached(String transactionId, Status status){
+        return getOrderMeta(transactionId).getStatusReachedAt(status) != null;
+    }
 
     public String getTrackingUrl(Order order) {
         if (!ObjectUtil.isVoid(order.getId())) {

@@ -4,6 +4,7 @@ import com.venky.swf.plugins.beckn.tasks.BecknApiCall;
 import com.venky.swf.plugins.beckn.tasks.BppTask;
 import in.succinct.beckn.Request;
 import in.succinct.bpp.core.adaptor.CommerceAdaptor;
+import in.succinct.bpp.core.adaptor.api.MessageLogger;
 import in.succinct.bpp.core.adaptor.api.NetworkApiAdaptor;
 
 import java.net.URL;
@@ -13,7 +14,6 @@ import java.util.Map;
 public class BppActionTask extends BppTask {
     NetworkApiAdaptor networkApiAdaptor;
     CommerceAdaptor adaptor ;
-
 
 
     public BppActionTask(NetworkApiAdaptor apiAdaptor, CommerceAdaptor adaptor, Request request, Map<String, String> headers){
@@ -52,7 +52,7 @@ public class BppActionTask extends BppTask {
         String callBackUrl = request == null ? null : request.getExtendedAttributes().get(Request.CALLBACK_URL); // To support call back via bg
 
         BecknApiCall apiCall = super.send(callBackUrl, callbackRequest,schemaSource);
-        networkApiAdaptor.log("ToNetwork",callbackRequest,apiCall.getHeaders(),apiCall.getResponse(),apiCall.getUrl());
+        networkApiAdaptor.log(MessageLogger.TO_NET,callbackRequest,apiCall.getHeaders(),apiCall.getResponse(),apiCall.getUrl());
         return apiCall;
     }
 

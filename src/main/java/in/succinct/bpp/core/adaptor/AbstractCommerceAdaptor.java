@@ -10,6 +10,7 @@ import in.succinct.beckn.Categories;
 import in.succinct.beckn.Context;
 import in.succinct.beckn.Descriptor;
 import in.succinct.beckn.Fulfillment;
+import in.succinct.beckn.Fulfillment.FulfillmentStatus;
 import in.succinct.beckn.Fulfillment.FulfillmentType;
 import in.succinct.beckn.Fulfillment.ServiceablityTags;
 import in.succinct.beckn.Fulfillments;
@@ -47,7 +48,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public abstract class AbstractCommerceAdaptor extends CommerceAdaptor{
+public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements ItemFetcher{
 
 
     public AbstractCommerceAdaptor(Map<String,String> configuration, Subscriber subscriber) {
@@ -71,6 +72,7 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor{
         cFulfillment.setType(FulfillmentType.store_pickup);
         cFulfillment.setId(BecknIdHelper.getBecknId("1",getSubscriber(), Entity.fulfillment));
         cFulfillment.setContact(getProviderConfig().getSupportContact());
+        cFulfillment.setFulfillmentStatus(FulfillmentStatus.Serviceable);
         return cFulfillment;
     }
 
@@ -106,13 +108,17 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor{
             serviceabilityTagDetail.add(new Tag("val", rules.get(0).getMaxDistance()));
             serviceabilityTagDetail.add(new Tag("unit", "km"));
         }
+        cFulfillment.setFulfillmentStatus(FulfillmentStatus.Serviceable);
         return cFulfillment;
 
     }
 
 
-
     public Provider getProvider() {
+        return getProvider(this);
+    }
+
+    public Provider getProvider(ItemFetcher fetcher){
         ProviderConfig config = getProviderConfig();
         Provider provider = new Provider();
         provider.setDescriptor(new Descriptor());
@@ -132,10 +138,10 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor{
         provider.setPayments(getSupportedPaymentCollectionMethods());
         provider.setLocations(getProviderLocations());
         provider.setFulfillments(getFulfillments());
-        provider.setItems(getItems());
+        provider.setItems(fetcher.getItems());
         provider.setCategoryId(config.getCategory().getId());
         provider.setCategories(new Categories());
-        provider.getCategories().add(getProviderConfig().getCategory());
+        provider.getCategories().add(config.getCategory());
         //provider.setTime(config.getTime());
         return provider;
     }

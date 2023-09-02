@@ -217,7 +217,7 @@ public class SuccinctIssueTracker extends IssueTracker {
         Contact supportContact = providerConfig.getSupportContact();
         CommerceAdaptor adaptor = getAdaptor();
 
-        Company company = adaptor.createCompany(selfOrg);
+        Company company = adaptor.createCompany(selfOrg,adaptor.getSubscriber().getSubscriberId());
         com.venky.swf.db.model.application.Application application = getAdaptor().getApplication();
 
 
@@ -355,11 +355,7 @@ public class SuccinctIssueTracker extends IssueTracker {
     }
 
     private Representative getDbRepresentative(Context context, Issue issue, in.succinct.beckn.Representative representative) {
-        Company dbCompany = getOrganization(representative.getOrganization());
-        if (ObjectUtil.isVoid(dbCompany.getDomainName())) {
-            dbCompany.setDomainName(representative.getSubscriberId());
-        }
-        dbCompany.save();
+        Company dbCompany = getAdaptor().createCompany(representative.getOrganization(), representative.getSubscriberId());
 
         Subscriber subscriber = Database.getTable(Subscriber.class).newRecord();
         subscriber.setSubscriberId(representative.getSubscriberId());
@@ -389,7 +385,7 @@ public class SuccinctIssueTracker extends IssueTracker {
                 user.setName(contact.getEmail());
             }
             if (person != null) {
-                user.setName(person.getName());
+                user.setLongName(person.getName());
             }
             user.setCompanyId(dbCompany.getId());
             user = Database.getTable(User.class).getRefreshed(user);
@@ -520,13 +516,6 @@ public class SuccinctIssueTracker extends IssueTracker {
         return becknOdr;
     }
 
-    private Company getOrganization(Organization organization) {
-        if (organization == null) {
-            return null;
-        }
-
-        return getAdaptor().createCompany(organization);
-    }
 
     private static <T extends in.succinct.beckn.Representative> T getBecknRepresentative(Subscriber subscriber, Class<T> representativeClass) {
         T representative = null;

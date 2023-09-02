@@ -2,6 +2,7 @@ package in.succinct.bpp.core.adaptor;
 
 
 import com.venky.cache.Cache;
+import com.venky.core.date.DateUtils;
 import com.venky.core.security.Crypt;
 import com.venky.core.util.ObjectUtil;
 import com.venky.swf.db.annotations.column.ui.mimes.MimeType;
@@ -13,6 +14,7 @@ import com.venky.swf.routing.Config;
 import in.succinct.beckn.BecknAware;
 import in.succinct.beckn.BecknObject;
 import in.succinct.beckn.BecknObjectWithId;
+import in.succinct.beckn.BecknObjects;
 import in.succinct.beckn.BecknObjectsWithId;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.Subscriber;
@@ -37,6 +39,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.logging.Level;
 
 public abstract class NetworkAdaptor extends BecknObjectWithId {
@@ -100,13 +104,23 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
         set("registry_url",registry_url);
     }
 
+    public String getUniqueKeyId(){
+        return get("unique_key_id","unique_key_id");
+    }
     public String getBaseUrl(){
         return get("base_url");
     }
+
     public void setBaseUrl(String base_url){
         set("base_url",base_url);
     }
 
+    public int getKeyExpiryGracePeriod(){
+        return getInteger("key_expiry_grace_period" ,0 );
+    }
+    public void setKeyExpiryGracePeriod(int key_expiry_grace_period){
+        set("key_expiry_grace_period",key_expiry_grace_period);
+    }
     public List<Subscriber> lookup(String subscriberId, boolean onlyIfSubscribed) {
         Subscriber subscriber = new Subscriber();
         subscriber.setSubscriberId(subscriberId);
@@ -231,26 +245,55 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
         Config.instance().getLogger(getClass().getName()).info("subscribe" + "-" + response.toString());
     }
 
-    public List<Subscriber> lookup(Subscriber subscriber,boolean onlyIfSubscribed) {
-        List<Subscriber> subscribers = new ArrayList<>();
+    private transient TimeSensitiveCache subscriberLookup = new TimeSensitiveCache(Duration.ofHours(1));
 
-        JSONArray responses = new Call<JSONObject>().method(HttpMethod.POST).url(getRegistryUrl(), "lookup").input(subscriber.getInner(false)).inputFormat(InputFormat.JSON)
-                .header("content-type", MimeType.APPLICATION_JSON.toString())
-                .header("accept", MimeType.APPLICATION_JSON.toString()).getResponseAsJson();
-        if (responses == null) {
-            return subscribers;
-        }
-
-        for (Iterator<?> i = responses.iterator(); i.hasNext(); ) {
-            JSONObject object1 = (JSONObject) i.next();
-            Subscriber subscriber1 = new Subscriber(object1);
-            if (onlyIfSubscribed && !ObjectUtil.equals(subscriber1.getStatus(), "SUBSCRIBED")) {
-                i.remove();
-            } else {
-                subscribers.add(subscriber1);
+    public String getKey(Subscriber subscriber){
+        TreeMap<String,String> map = new TreeMap<>();
+        JSONObject inner = subscriber.getInner();
+        for (Object s : inner.keySet()){
+            if (s instanceof String && inner.get(s) instanceof String){
+                map.put((String)s,(String)inner.get(s));
             }
         }
-        return subscribers;
+        return map.toString();
+    }
+    public List<Subscriber> lookup(Subscriber subscriber,boolean onlyIfSubscribed) {
+        return subscriberLookup.get(getKey(subscriber),()->{
+            List<Subscriber> subscribers = new ArrayList<>();
+            Subscriber tmp = new Subscriber();
+            tmp.update(subscriber);
+            if (subscriber.getUniqueKeyId() != null) {
+                tmp.setUniqueKeyId(null);
+                tmp.set(getUniqueKeyId(), subscriber.getUniqueKeyId());
+            }
+
+            if (ObjectUtil.isVoid(tmp.getCountry())){
+                tmp.setCountry("IND");
+            }
+
+            JSONArray responses = new Call<JSONObject>().method(HttpMethod.POST).url(getRegistryUrl(), "lookup").input(tmp.getInner(false)).inputFormat(InputFormat.JSON)
+                    .header("content-type", MimeType.APPLICATION_JSON.toString())
+                    .header("accept", MimeType.APPLICATION_JSON.toString()).getResponseAsJson();
+            if (responses == null) {
+                return subscribers;
+            }
+
+            Date now = new Date();
+            for (Iterator<?> i = responses.iterator(); i.hasNext(); ) {
+                JSONObject object1 = (JSONObject) i.next();
+                Subscriber subscriber1 = new Subscriber(object1);
+                if (onlyIfSubscribed && !ObjectUtil.equals(subscriber1.getStatus(), "SUBSCRIBED")) {
+                    i.remove();
+                } else if (subscriber1.getValidTo() != null && DateUtils.addHours(subscriber1.getValidTo(),getKeyExpiryGracePeriod()).before(now)){
+                    i.remove();
+                }else if (subscriber1.getValidFrom() != null && DateUtils.addHours(subscriber1.getValidFrom(),-1*getKeyExpiryGracePeriod()).after(now)){
+                    i.remove();
+                }else{
+                    subscribers.add(subscriber1);
+                }
+            }
+            return subscribers;
+        });
     }
 
 
@@ -290,9 +333,17 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
         public String getSchema(){
             return get("schema");
         }
-
         public URL getSchemaURL(){
-            String s = getSchema();
+            return getSchemaURL(null);
+        }
+        public URL getSchemaURL(String s){
+            if (ObjectUtil.isVoid(s)) {
+                return _getSchemaURL(getSchema());
+            }else {
+                return _getSchemaURL(s);
+            }
+        }
+        private URL _getSchemaURL(String s){
             if (ObjectUtil.isVoid(s)){
                 return null;
             }

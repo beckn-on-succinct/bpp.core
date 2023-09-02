@@ -1,17 +1,18 @@
 package in.succinct.bpp.core.adaptor;
 
+import java.io.Serializable;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
-public class TimeSensitiveCache {
-    Map<Class<?>,Entry> cache = new HashMap<>();
+public class TimeSensitiveCache implements Serializable {
+    Map<Object,Entry> cache = new HashMap<>();
     Duration ttl ;
     public TimeSensitiveCache(Duration ttl){
         this.ttl = ttl;
     }
 
-    public <T> T put(Class<T> key, T value) {
+    public <T> T put(Object key, T value) {
         Entry entry = new Entry();
         entry.expiry = System.currentTimeMillis() + ttl.toMillis();
         entry.value = value;
@@ -24,7 +25,7 @@ public class TimeSensitiveCache {
     }
 
 
-    public <T> T get(Class<T> key, ValueProvider<T> valueProvider){
+    public <T> T get(Object key, ValueProvider<T> valueProvider){
         T value;
         long now = System.currentTimeMillis();
 
