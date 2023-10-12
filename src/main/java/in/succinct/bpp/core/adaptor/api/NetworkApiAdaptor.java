@@ -29,6 +29,7 @@ import org.json.simple.JSONObject;
 
 import java.lang.reflect.Method;
 import java.net.URL;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -155,10 +156,13 @@ public abstract class NetworkApiAdaptor {
             throw new InvalidOrder();
         }
 
-        init(adaptor,request,reply,true);
-
-        Request initReply = getNetworkAdaptor().getObjectCreator(adaptor.getSubscriber().getDomain()).create(Request.class);
+        Request initReply = new Request();
         initReply.update(reply);
+        initReply.getContext().setAction("on_init");
+
+        init(adaptor,request,initReply,true);
+
+        initReply.getContext().setAction("confirm");
 
         adaptor.confirm(initReply,reply);
     }
@@ -196,7 +200,7 @@ public abstract class NetworkApiAdaptor {
         }else {
             throw new SellerException.InvalidCancellationReason();
         }
-        LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(adaptor.getSubscriber()).sync(request,getNetworkAdaptor(),false);
+        LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(adaptor.getSubscriber()).sync(request.getContext().getTransactionId(),order);
 
         adaptor.cancel(request,reply);
 
@@ -257,6 +261,8 @@ public abstract class NetworkApiAdaptor {
         newContext.setAction(action.startsWith("get_") ? action.substring(4) : "on_" + action);
         newContext.setBppId(subscriber.getSubscriberId());
         newContext.setBppUri(subscriber.getSubscriberUrl());
+        newContext.setTimestamp(new Date());
+
         to.setContext(newContext);
     }
     public void callback(CommerceAdaptor adaptor,Request reply) {

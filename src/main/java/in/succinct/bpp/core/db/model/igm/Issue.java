@@ -36,9 +36,9 @@ public interface Issue extends Model {
     public void setIssueSubCategory(String category);
 
     @PROTECTION
-    @COLUMN_DEF(StandardDefault.BOOLEAN_FALSE)
-    public boolean isSatisfactorilyClosed();
-    public void setSatisfactorilyClosed(boolean satisfactorilyClosed);
+    @IS_NULLABLE
+    public Boolean isSatisfactorilyClosed();
+    public void setSatisfactorilyClosed(Boolean satisfactorilyClosed);
 
     @PROTECTION
     @Index

@@ -4,9 +4,11 @@ import com.venky.swf.db.annotations.column.IS_NULLABLE;
 import com.venky.swf.db.annotations.column.IS_VIRTUAL;
 import com.venky.swf.db.annotations.column.UNIQUE_KEY;
 import com.venky.swf.db.annotations.column.pm.PARTICIPANT;
+import com.venky.swf.db.annotations.column.ui.HIDDEN;
 import com.venky.swf.db.annotations.column.validations.Enumeration;
 import com.venky.swf.db.annotations.model.HAS_DESCRIPTION_FIELD;
 import com.venky.swf.db.model.Model;
+import com.venky.swf.plugins.collab.db.model.user.User;
 import in.succinct.bpp.core.db.model.igm.config.Application;
 import in.succinct.bpp.core.db.model.igm.config.Channel;
 import in.succinct.bpp.core.db.model.igm.config.Faq;
@@ -17,6 +19,13 @@ import in.succinct.bpp.core.db.model.rsp.BankAccount;
 import java.util.List;
 
 public interface Subscriber extends Model {
+    @IS_VIRTUAL
+    @PARTICIPANT
+    @HIDDEN
+    public Long getAnyUserId();
+    public void setAnyUserId(Long anyUserId);
+    public User getAnyUser();
+
 
     @IS_VIRTUAL
     public String getName();

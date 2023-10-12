@@ -2,9 +2,6 @@ package in.succinct.bpp.core.adaptor;
 
 import com.venky.core.util.ObjectUtil;
 import com.venky.swf.plugins.beckn.messaging.Subscriber;
-import in.succinct.beckn.Cancellation;
-import in.succinct.beckn.Cancellation.CancelledBy;
-import in.succinct.beckn.CancellationReasons.CancellationReasonCode;
 import in.succinct.beckn.Catalog;
 import in.succinct.beckn.Categories;
 import in.succinct.beckn.Context;
@@ -12,34 +9,31 @@ import in.succinct.beckn.Descriptor;
 import in.succinct.beckn.Fulfillment;
 import in.succinct.beckn.Fulfillment.FulfillmentStatus;
 import in.succinct.beckn.Fulfillment.FulfillmentType;
-import in.succinct.beckn.Fulfillment.ServiceablityTags;
 import in.succinct.beckn.Fulfillments;
 import in.succinct.beckn.Images;
 import in.succinct.beckn.Items;
 import in.succinct.beckn.Location;
 import in.succinct.beckn.Locations;
 import in.succinct.beckn.Message;
-import in.succinct.beckn.Option;
 import in.succinct.beckn.Order;
 import in.succinct.beckn.Payment;
 import in.succinct.beckn.Payment.CollectedBy;
 import in.succinct.beckn.Payment.PaymentType;
 import in.succinct.beckn.Payments;
 import in.succinct.beckn.Provider;
+import in.succinct.beckn.Provider.ServiceablityTags;
 import in.succinct.beckn.Providers;
 import in.succinct.beckn.Request;
-import in.succinct.beckn.SellerException;
 import in.succinct.beckn.SellerException.InvalidOrder;
 import in.succinct.beckn.SellerException.InvalidRequestError;
 import in.succinct.beckn.SellerException.TrackingNotSupported;
 import in.succinct.beckn.SellerException.UpdationNotPossible;
-import in.succinct.beckn.Tag;
+import in.succinct.beckn.TagGroup;
 import in.succinct.beckn.Tracking;
 import in.succinct.bpp.core.adaptor.api.BecknIdHelper;
 import in.succinct.bpp.core.adaptor.api.BecknIdHelper.Entity;
 import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptor.FulfillmentStatusAudit;
 import in.succinct.bpp.core.adaptor.igm.IssueTracker;
-import in.succinct.bpp.core.db.model.LocalOrderSynchronizerFactory;
 import in.succinct.bpp.core.db.model.ProviderConfig;
 import in.succinct.bpp.core.db.model.ProviderConfig.DeliveryRules;
 import org.json.simple.JSONArray;
@@ -86,28 +80,7 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
         cFulfillment.setCategory(getProviderConfig().getFulfillmentCategory().toString());
         cFulfillment.setTAT(getProviderConfig().getFulfillmentTurnAroundTime());
 
-        cFulfillment.setServiceablityTags(new ServiceablityTags());
 
-        ServiceablityTags serviceabilityTags = cFulfillment.getServiceablityTags();
-
-
-        in.succinct.beckn.List serviceabilityTagDetail = new in.succinct.beckn.List();
-        serviceabilityTags.add(new Tag("serviceability",serviceabilityTagDetail));
-
-        DeliveryRules rules = getProviderConfig().getDeliveryRules();
-        if (rules == null || rules.size() == 0) {
-            serviceabilityTagDetail.add(new Tag("location", getProviderConfig().getLocation().getId()));
-            serviceabilityTagDetail.add(new Tag("category", getProviderConfig().getCategory().getId()));
-            serviceabilityTagDetail.add(new Tag("type", "12"));
-            serviceabilityTagDetail.add(new Tag("val", "IND"));
-            serviceabilityTagDetail.add(new Tag("unit", "Country"));
-        }else {
-            serviceabilityTagDetail.add(new Tag("location", getProviderConfig().getLocation().getId()));
-            serviceabilityTagDetail.add(new Tag("category", getProviderConfig().getCategory().getId()));
-            serviceabilityTagDetail.add(new Tag("type", "10"));
-            serviceabilityTagDetail.add(new Tag("val", rules.get(0).getMaxDistance()));
-            serviceabilityTagDetail.add(new Tag("unit", "km"));
-        }
         cFulfillment.setFulfillmentStatus(FulfillmentStatus.Serviceable);
         return cFulfillment;
 
@@ -121,16 +94,17 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
     public Provider getProvider(ItemFetcher fetcher){
         ProviderConfig config = getProviderConfig();
         Provider provider = new Provider();
+        provider.setBppId(getSubscriber().getSubscriberId());
         provider.setDescriptor(new Descriptor());
         provider.getDescriptor().setName(config.getStoreName());
-        provider.getDescriptor().setCode(getSubscriber().getAppId());
+        provider.getDescriptor().setCode(getSubscriber().getSubscriberId());
         provider.getDescriptor().setShortDesc(config.getStoreName());
         provider.getDescriptor().setLongDesc(config.getStoreName());
         provider.getDescriptor().setImages(new Images());
         provider.getDescriptor().setSymbol(config.getLogo());
         provider.getDescriptor().getImages().add(config.getLogo());
 
-        provider.setId(getSubscriber().getAppId()); // Provider is same as subscriber.!!
+        provider.setId(getSubscriber().getSubscriberId()); // Provider is same as subscriber.!!
         provider.setTtl(120);
         if (!ObjectUtil.isVoid(config.getFssaiRegistrationNumber())) {
             provider.setFssaiLicenceNo(config.getFssaiRegistrationNumber());
@@ -142,6 +116,25 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
         provider.setCategoryId(config.getCategory().getId());
         provider.setCategories(new Categories());
         provider.getCategories().add(config.getCategory());
+        provider.setServiceablityTags(new ServiceablityTags());
+
+        ServiceablityTags serviceabilityTags = provider.getServiceablityTags();
+
+
+        DeliveryRules rules = getProviderConfig().getDeliveryRules();
+        if (rules == null || rules.isEmpty()) {
+            serviceabilityTags.setTag("serviceability","location",getProviderConfig().getLocation().getId());
+            serviceabilityTags.setTag("serviceability","category",getProviderConfig().getCategory().getId());
+            serviceabilityTags.setTag("serviceability","type", "12");
+            serviceabilityTags.setTag("serviceability","val", "IND");
+            serviceabilityTags.setTag("serviceability","unit", "Country");
+        }else {
+            serviceabilityTags.setTag("serviceability","location",getProviderConfig().getLocation().getId());
+            serviceabilityTags.setTag("serviceability","category",getProviderConfig().getCategory().getId());
+            serviceabilityTags.setTag("serviceability","type", "10");
+            serviceabilityTags.setTag("serviceability","val", String.valueOf(rules.get(0).getMaxDistance()));
+            serviceabilityTags.setTag("serviceability","unit", "km");
+        }
         //provider.setTime(config.getTime());
         return provider;
     }
@@ -238,7 +231,6 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
     public abstract Locations getProviderLocations();
     public abstract Items getItems();
     public abstract boolean isTaxIncludedInPrice() ;
-    public abstract Order initializeDraftOrder(Request request) ;
     public abstract Order confirmDraftOrder(Order draftOrder) ;
     public abstract Order getStatus(Order order);
     public abstract Order cancel(Order order) ;
@@ -263,6 +255,10 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
     public void confirm(Request request, Request reply){
         Order draftOrder = request.getMessage().getOrder();
         Order confirmedOrder = confirmDraftOrder(draftOrder);
+        confirmedOrder.setUpdatedAt(request.getContext().getTimestamp());
+        if (reply.getMessage() == null) {
+            reply.setMessage(new Message());
+        }
         reply.getMessage().setOrder(confirmedOrder);
     }
 
@@ -270,14 +266,6 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
     public abstract void search(Request request, Request reply);
     public abstract void select(Request request, Request reply) ;
 
-    public void init(Request request, Request reply) {
-
-        Message message = new Message();
-        reply.setMessage(message);
-
-        Order draftOrder = initializeDraftOrder(request);
-        message.setOrder(draftOrder);
-    }
 
     public void track(Request request, Request reply) {
         /* Take track message and fill response with on_track message */
@@ -323,9 +311,6 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
         message.setOrder(cancelledOrder);
     }
 
-    public void rating(Request request, Request reply) {
-        getRatingCollector().rating(request,reply);
-    }
 
 
     public void status(Request request, Request reply){
@@ -347,16 +332,5 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
 
     public void update(Request request, Request reply){
         throw new UpdationNotPossible("Orders cannot be updated. Please cancel and rebook your orders!");
-    }
-    public void issue(Request request,Request reply){
-        IssueTracker tracker = getIssueTracker();
-        tracker.save(request,reply);
-    }
-    public void issue_status(Request request,Request reply){
-        IssueTracker tracker = getIssueTracker();
-        tracker.status(request,reply);
-    }
-    public void receiver_recon(Request request ,Request reply){
-        getReceiverReconProvider().receiver_recon(request,reply);
     }
 }

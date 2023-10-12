@@ -1,5 +1,6 @@
 package in.succinct.bpp.core.adaptor;
 
+import com.venky.core.util.ObjectUtil;
 import com.venky.swf.db.Database;
 import com.venky.swf.db.model.CryptoKey;
 import com.venky.swf.db.model.application.Application;
@@ -134,13 +135,13 @@ public abstract class CommerceAdaptor{
     public abstract void init(Request request, Request response);
     public abstract void confirm(Request request, Request response);
     public abstract void track(Request request, Request response);
-    public abstract void issue(Request request, Request response);
-    public abstract void issue_status(Request request, Request response);
-    public abstract void receiver_recon(Request request, Request reply) ;
     public abstract void cancel(Request request, Request response);
     public abstract void update(Request request, Request response);
     public abstract void status(Request request, Request response);
-    public abstract void rating(Request request, Request response);
+    public void rating(Request request, Request reply) {
+        getRatingCollector().rating(request,reply);
+    }
+
     public void support(Request request, Request reply) {
         reply.setMessage(new Message());
         reply.getMessage().setEmail(getProviderConfig().getSupportContact().getEmail());
@@ -209,4 +210,43 @@ public abstract class CommerceAdaptor{
         company.save();
         return company;
     }
+
+    public Application createApplication(Company company, String subscriberId , String nicCode) {
+        com.venky.swf.plugins.collab.db.model.participants.Application application = Database.getTable(com.venky.swf.plugins.collab.db.model.participants.Application.class).newRecord();
+        if (ObjectUtil.equals(subscriberId,subscriber.getSubscriberId())) {
+            application.setAppId(subscriber.getAppId());
+        }
+        if (ObjectUtil.isVoid(application.getAppId())){
+            application.setAppId(subscriberId);
+        }
+        application = Database.getTable(com.venky.swf.plugins.collab.db.model.participants.Application.class).getRefreshed(application);
+
+        application.setCompanyId(company.getId());
+        if (!ObjectUtil.isVoid(nicCode)) {
+            application.setIndustryClassificationCode(nicCode);
+        }
+        application.setCompanyId(company.getId());
+        application.setHeaders("(created) (expires) digest");
+        application.setSignatureLifeMillis(5000);
+        application.setSigningAlgorithm(Request.SIGNATURE_ALGO);
+        application.setHashingAlgorithm("BLAKE2B-512");
+        application.setSigningAlgorithmCommonName(application.getSigningAlgorithm().toLowerCase());
+        application.setHashingAlgorithmCommonName(application.getHashingAlgorithm().toLowerCase());
+        application.save();
+        return application;
+    }
+
+
+    public void issue(Request request,Request reply){
+        IssueTracker tracker = getIssueTracker();
+        tracker.save(request,reply);
+    }
+    public void issue_status(Request request,Request reply){
+        IssueTracker tracker = getIssueTracker();
+        tracker.status(request,reply);
+    }
+    public void receiver_recon(Request request ,Request reply){
+        getReceiverReconProvider().receiver_recon(request,reply);
+    }
+
 }

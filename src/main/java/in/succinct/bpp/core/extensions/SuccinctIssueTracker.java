@@ -2,6 +2,7 @@ package in.succinct.bpp.core.extensions;
 
 import com.venky.core.util.ObjectUtil;
 import com.venky.swf.db.Database;
+import com.venky.swf.db.model.application.Application;
 import com.venky.swf.plugins.attachment.db.model.Attachment;
 import com.venky.swf.plugins.collab.db.model.participants.admin.Company;
 import com.venky.swf.plugins.collab.db.model.user.User;
@@ -46,7 +47,6 @@ import in.succinct.bpp.core.db.model.Subscriber;
 import in.succinct.bpp.core.db.model.igm.Issue;
 import in.succinct.bpp.core.db.model.igm.NoteAttachment;
 import in.succinct.bpp.core.db.model.igm.Representative;
-import in.succinct.bpp.core.db.model.igm.config.Application;
 import in.succinct.bpp.core.db.model.igm.config.Odr;
 import in.succinct.bpp.core.db.model.igm.config.PossibleRepresentative;
 import in.succinct.bpp.core.db.model.igm.config.PreferredOdr;
@@ -161,6 +161,7 @@ public class SuccinctIssueTracker extends IssueTracker {
                 dbNote.setAction(note.getAction().getComplainantAction().name());
                 dbNote.setIssueId(dbIssue.getId());
                 dbNote.setNotes(note.getDescription().getLongDesc());
+                dbNote.setSummary(note.getDescription().getShortDesc());
 
                 Representative current = ObjectUtil.equals(issue.getComplainant().getSubscriberId(), note.getCreatedBy().getSubscriberId()) ? complainant :
                         (ObjectUtil.equals(issue.getRespondent().getSubscriberId(), note.getCreatedBy().getSubscriberId()) ? respondent :
@@ -359,18 +360,19 @@ public class SuccinctIssueTracker extends IssueTracker {
 
         Subscriber subscriber = Database.getTable(Subscriber.class).newRecord();
         subscriber.setSubscriberId(representative.getSubscriberId());
+        subscriber.setNetworkId(context.getNetworkId());
+        subscriber = Database.getTable(Subscriber.class).getRefreshed(subscriber);
+        Application application = null;
+        if (!subscriber.getRawRecord().isNewRecord()){
+            application = subscriber.getApplication();
+        }
+        if (application == null){
+            application = getAdaptor().createApplication(dbCompany, subscriber.getSubscriberId(), context.getDomain());
+        }
 
-        Application application = Database.getTable(Application.class).newRecord();
-        application.setAppId(representative.getSubscriberId());
-        application.setCompanyId(dbCompany.getId());
-        application = Database.getTable(Application.class).getRefreshed(application);
-        application.setIndustryClassificationCode(context.getDomain());
-        application.save();
 
         subscriber.setApplicationId(application.getId());
         subscriber.setDomainId(context.getDomain());
-        subscriber.setNetworkId(context.getNetworkId());
-        subscriber = Database.getTable(Subscriber.class).getRefreshed(subscriber);
         subscriber.save();
 
         Representative dbRepresentative = Database.getTable(Representative.class).newRecord();
@@ -478,10 +480,18 @@ public class SuccinctIssueTracker extends IssueTracker {
                 note.setCreatedBy(issue.getComplainant());
             } else {
                 note.getAction().setRespondentAction(RepresentativeAction.valueOf(dbNote.getAction()));
-                note.setCreatedBy(issue.getRespondent());
+                Representative representative = dbNote.getLoggedByRepresentor();
+
+                Respondent respondent = new Respondent();
+                respondent.setRole(Role.valueOf(representative.getRole()));
+                respondent.setContact(getBecknContact(representative.getUser()));
+                respondent.setOrganization(getBecknOrganization(representative.getSubscriber()));
+                respondent.setPerson(getBecknPerson(representative.getUser()));
+                note.setCreatedBy(respondent);
             }
             note.setDescription(new Descriptor());
             note.getDescription().setLongDesc(dbNote.getNotes());
+            note.getDescription().setShortDesc(dbNote.getSummary());
             if (!dbNote.getReflector().isVoid(dbNote.getParentNoteId())) {
                 note.setParentNoteId(dbNote.getParentNote().getNoteId());
             }

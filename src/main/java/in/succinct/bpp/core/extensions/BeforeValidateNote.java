@@ -25,9 +25,6 @@ public class BeforeValidateNote extends BeforeModelValidateExtension<Note> {
             model.setNoteId(UUID.randomUUID().toString());
         }
 
-        Event event = Event.find("on_create_issue_note");
-        if (event != null && application != null){
-            TaskManager.instance().executeAsync((DbTask)()-> event.raise(application,SuccinctIssueTracker.getBecknIssue(model.getIssue())),false);
-        }
+
     }
 }

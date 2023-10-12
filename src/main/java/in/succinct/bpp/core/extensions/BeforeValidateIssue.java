@@ -3,15 +3,15 @@ package in.succinct.bpp.core.extensions;
 import com.venky.core.util.ObjectUtil;
 import com.venky.swf.db.Database;
 import com.venky.swf.db.extensions.BeforeModelValidateExtension;
+import com.venky.swf.db.model.User;
 import in.succinct.beckn.Issue.EscalationLevel;
+import in.succinct.beckn.Issue.Status;
 import in.succinct.beckn.Note.RepresentativeAction;
-import in.succinct.beckn.Representative.Respondent;
+import in.succinct.beckn.Resolution.ResolutionStatus;
 import in.succinct.beckn.Role;
 import in.succinct.bpp.core.db.model.igm.Issue;
 import in.succinct.bpp.core.db.model.igm.Note;
 import in.succinct.bpp.core.db.model.igm.Representative;
-
-import javax.xml.crypto.Data;
 
 public class BeforeValidateIssue extends BeforeModelValidateExtension<Issue> {
     static {
@@ -23,34 +23,32 @@ public class BeforeValidateIssue extends BeforeModelValidateExtension<Issue> {
             if (!ObjectUtil.isVoid(model.getResolutionStatus())){
                 Note note = Database.getTable(Note.class).newRecord();
                 note.setLoggedByRepresentorId(model.getRespondentId());
-                StringBuilder notes = new StringBuilder();
                 if (ObjectUtil.isVoid(model.getResolution())){
                     model.setResolution(model.getResolutionStatus());
                 }
-                notes.append(model.getResolution());
-                if (!ObjectUtil.isVoid(model.getResolutionRemarks())) {
-                    notes.append("\nRemarks:").append(model.getResolutionRemarks());
+                note.setSummary(model.getResolution());
+
+                switch (EscalationLevel.valueOf(model.getEscalationLevel())){
+                    case ISSUE:
+                        note.setNotes(model.getResolutionRemarks());break;
+                    case GRIEVANCE:
+                        note.setNotes(model.getGroResolutionRemarks()); break;
+                    case DISPUTE:
+                        note.setNotes(model.getDisputeResolutionRemarks());break;
                 }
 
-                if (!ObjectUtil.isVoid(model.getGroResolutionRemarks())) {
-                    notes.append("\nGro Remarks:").append(model.getGroResolutionRemarks());
-                }
-
-                if (!ObjectUtil.isVoid(model.getDisputeResolutionRemarks())) {
-                    notes.append("\nOdr Remarks:").append(model.getDisputeResolutionRemarks());
-                }
-
-
-                note.setNotes(notes.toString());
                 note.setIssueId(model.getId());
                 note.setAction(RepresentativeAction.convertor.toString(RepresentativeAction.RESOLVED));
                 note.save();
             }
         }
-        Representative respondent = model.getRespondent();
         if (ObjectUtil.isVoid(model.getEscalationLevel())){
             model.setEscalationLevel(EscalationLevel.ISSUE.name());
+        }else if (model.getRawRecord().isFieldDirty("ESCALATION_LEVEL")){
+            model.setStatus(Status.OPEN.name());
+            model.setResolutionStatus(null);
         }
+
 
         EscalationLevel currentEscalationLevel = EscalationLevel.valueOf(model.getEscalationLevel());
 

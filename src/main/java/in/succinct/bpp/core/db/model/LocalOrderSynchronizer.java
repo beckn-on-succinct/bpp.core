@@ -168,10 +168,15 @@ public class LocalOrderSynchronizer {
         return getLastKnownOrder(getOrderMeta(transactionId));
     }
     public void sync(String transactionId,Order order){
+        sync(transactionId,order,false);
+    }
+    public void sync(String transactionId,Order order,boolean persist){
         BecknOrderMeta meta =getOrderMeta(transactionId);
         sync(meta,order);
+        if (persist) {
+            meta.save();
+        }
     }
-
     private void sync(BecknOrderMeta meta, Order order){
         meta.setOrderJson(order.getInner().toString());
     }
@@ -227,9 +232,6 @@ public class LocalOrderSynchronizer {
                         if (lastKnown.getFulfillment().getFulfillmentStatus().compareTo(FulfillmentStatus.Order_picked_up) >= 0){
                             throw new SellerException.CancellationNotPossible("Order already closed!");
                         }
-                        if (order.getCancellation() != null) {
-                            lastKnown.setCancellation(order.getCancellation());
-                        }
                     }
                     // Incoming
                     if (!ObjectUtil.isVoid(order.getId())) {
@@ -241,20 +243,6 @@ public class LocalOrderSynchronizer {
                     }
                     fixFulfillment(request.getContext(), order);
                     fixLocation(order);
-
-                    lastKnown.setProviderLocation(order.getProviderLocation());
-                    lastKnown.setBilling(order.getBilling());
-
-                    if (order.getFulfillment() != null) {
-                        lastKnown.setFulfillment(new Fulfillment());
-                        lastKnown.getFulfillment().update(order.getFulfillment());
-                    }
-                    if (order.getPayment() != null){
-                        lastKnown.setPayment(new Payment());
-                        lastKnown.getPayment().update(order.getPayment());
-                    }
-
-                    meta.setOrderJson(lastKnown.getInner().toString());
 
                     if (order.getPayment() != null) {
                         if (order.getPayment().getBuyerAppFinderFeeType() != null) {
@@ -283,21 +271,25 @@ public class LocalOrderSynchronizer {
                     if (order.getState() == Status.Cancelled && order.getCancellation() == null && lastKnown.getCancellation() != null) {
                         order.setCancellation(lastKnown.getCancellation());
                     }
-
                     meta.setOrderJson(order.getInner().toString());
                     Status status = order.getState();
+                    if (request.getContext().getTimestamp() == null){
+                        request.getContext().setTimestamp(new Date());
+                    }
+
+                    if (order.getUpdatedAt() != null && order.getUpdatedAt().after(request.getContext().getTimestamp())){
+                        request.getContext().setTimestamp(order.getUpdatedAt());
+                    }
                     if (status != null) {
-                        meta.setStatusReachedAt(status, new Date(System.currentTimeMillis()));
+                        meta.setStatusReachedAt(status, request.getContext().getTimestamp());
                     }
                     Fulfillment fulfillment = order.getFulfillment();
                     if (fulfillment != null) {
                         FulfillmentStatus fulfillmentStatus = fulfillment.getFulfillmentStatus();
                         if (fulfillmentStatus != null) {
-                            meta.setFulfillmentStatusReachedAt(fulfillmentStatus, new Date(System.currentTimeMillis()));
+                            meta.setFulfillmentStatusReachedAt(fulfillmentStatus, request.getContext().getTimestamp());
                         }
                     }
-
-
                 }
             }
         }
@@ -313,7 +305,13 @@ public class LocalOrderSynchronizer {
             meta.save();
         }
     }
-
+    public void setStatusReachedAt(String transactionId, Status status, Date at, boolean persist) {
+        BecknOrderMeta meta = getOrderMeta(transactionId);
+        meta.setStatusReachedAt(status, at);
+        if (persist) {
+            meta.save();
+        }
+    }
     public void fixLocation(Order order) {
         if (order.getProvider() == null) {
             return;
@@ -453,7 +451,7 @@ public class LocalOrderSynchronizer {
         Bucket orderAmount = new Bucket();
         for (Item item : lastKnown.getItems()) {
             orderAmount.increment(item.getPrice().getValue());
-            double gst = item.getPrice().getValue() * doubleConverter.valueOf(item.getTags().get("tax_rate")) / 100.0;
+            double gst = item.getPrice().getValue() * doubleConverter.valueOf(item.getTaxRate()) / 100.0;
             if (sameState) {
                 cgst.increment(gst / 2);
                 sgst.increment(gst / 2);

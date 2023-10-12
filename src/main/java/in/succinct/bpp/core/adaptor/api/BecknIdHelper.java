@@ -43,7 +43,7 @@ public class BecknIdHelper {
             builder.append(0);
         }
         builder.append("@");
-        builder.append(subscriber.getAppId());
+        builder.append(subscriber.getSubscriberId());
         if (becknEntity != null){
             builder.append(".").append(becknEntity);
         }

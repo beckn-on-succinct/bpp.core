@@ -78,14 +78,12 @@ public class ProviderConfig extends BecknObject {
     }
 
 
-    public Duration getTurnAroundTime() {
-        String tat = get("turn_around_time");
+
+    public Duration getTimeToShip() {
+        String tat = get("time_to_ship");
         return tat == null ? null : Duration.parse(tat);
     }
 
-    public void setTurnAroundTime(Duration turn_around_time) {
-        set("turn_around_time", turn_around_time == null ? null : turn_around_time.toString());
-    }
 
     public Duration getFulfillmentTurnAroundTime() {
         String tat = get("fulfillment_turn_around_time");
