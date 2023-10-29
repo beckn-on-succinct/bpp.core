@@ -18,6 +18,7 @@ import in.succinct.beckn.BecknObjects;
 import in.succinct.beckn.BecknObjectsWithId;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.Subscriber;
+import in.succinct.beckn.Subscriber.Domains;
 import in.succinct.bpp.core.adaptor.api.NetworkApiAdaptor;
 import in.succinct.json.JSONAwareWrapper;
 import org.json.simple.JSONArray;
@@ -66,10 +67,17 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
     public boolean isSelfRegistrationSupported(){
         return getBoolean("self_registration_supported");
     }
+    
     public void setSelfRegistrationSupported(boolean self_registration_supported){
         set("self_registration_supported",self_registration_supported);
     }
 
+    public boolean isSubscriptionNeededPostRegistration(){
+        return getBoolean("subscription_needed_post_registration", true);
+    }
+    public void setSubscriptionNeededPostRegistration(boolean subscription_needed_post_registration){
+        set("subscription_needed_post_registration",subscription_needed_post_registration);
+    }
     public Domains getDomains(){
         return get(Domains.class, "domains");
     }
@@ -217,9 +225,25 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
     public void subscribe(Subscriber subscriber) {
         List<Subscriber> subscribers = lookup(subscriber.getSubscriberId(),false);
 
-        if (subscribers.isEmpty()){
+        if (subscriber.getDomains() == null){
+            subscriber.setDomains(new Subscriber.Domains());
+            subscriber.getDomains().add(subscriber.getDomain());
+        }
+
+        if (subscribers.size() < subscriber.getDomains().size()){
             if (isSelfRegistrationSupported()) {
-                register(subscriber);
+                Subscriber.Domains domains = new Subscriber.Domains(subscriber.getDomains().getInner());
+                try {
+                    subscribers.forEach(s->{
+                        subscriber.getDomains().remove(s.getDomain());
+                    }); //Remove domains already registered!
+                    register(subscriber);
+                }finally {
+                    subscriber.setDomains(domains);
+                }
+                if (isSubscriptionNeededPostRegistration()) {
+                    _subscribe(subscriber);
+                }
             }else {
                 Config.instance().getLogger(getClass().getName()).log(Level.WARNING,"Contact Registrar to register to network !");
                 return;
@@ -230,8 +254,11 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
             if (me.getValidFrom().getTime() < now && me.getValidTo().getTime() > now){
                 return;
             }
+            _subscribe(subscriber);
         }
+    }
 
+    protected void _subscribe(Subscriber subscriber){
         Request request = new Request(getSubscriptionJson(subscriber));
 
         Call<JSONObject> call = new Call<JSONObject>().url(getRegistryUrl(), "subscribe").
@@ -241,6 +268,7 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
 
         call.header("Authorization", request.generateAuthorizationHeader(subscriber.getSubscriberId(),
                 Objects.requireNonNull(getKey(subscriber.getAlias(),CryptoKey.PURPOSE_SIGNING)).getAlias()));
+
         JSONObject response = call.getResponseAsJson();
         Config.instance().getLogger(getClass().getName()).info("subscribe" + "-" + response.toString());
     }

@@ -9,6 +9,7 @@ import com.venky.swf.db.annotations.column.validations.Enumeration;
 import com.venky.swf.db.annotations.model.HAS_DESCRIPTION_FIELD;
 import com.venky.swf.db.model.Model;
 import com.venky.swf.plugins.collab.db.model.user.User;
+import in.succinct.bpp.core.adaptor.NetworkAdaptor.Domains;
 import in.succinct.bpp.core.db.model.igm.config.Application;
 import in.succinct.bpp.core.db.model.igm.config.Channel;
 import in.succinct.bpp.core.db.model.igm.config.Faq;
@@ -72,6 +73,7 @@ public interface Subscriber extends Model {
     public Long getBankAccountId();
     public void setBankAccountId(Long id);
     public BankAccount getBankAccount();
+
 
 
 }
