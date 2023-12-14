@@ -7,6 +7,7 @@ import com.venky.swf.db.annotations.column.IS_VIRTUAL;
 import com.venky.swf.db.annotations.column.UNIQUE_KEY;
 import com.venky.swf.db.annotations.column.defaulting.StandardDefault;
 import com.venky.swf.db.annotations.column.indexing.Index;
+import com.venky.swf.db.annotations.column.validations.Enumeration;
 import com.venky.swf.db.model.Model;
 import in.succinct.beckn.Fulfillment.FulfillmentStatus;
 import in.succinct.beckn.Order.Status;
@@ -50,7 +51,7 @@ public interface BecknOrderMeta extends Model {
     public String getECommerceOrderId();
     public void setECommerceOrderId(String eCommerceOrderId);
 
-    @COLUMN_SIZE(2048*16)
+    @COLUMN_SIZE(2048*64)
     @IS_NULLABLE
     public String getOrderJson();
     public void setOrderJson(String orderJson);
@@ -65,7 +66,8 @@ public interface BecknOrderMeta extends Model {
     public double getBuyerAppFinderFeeAmount();
     public void setBuyerAppFinderFeeAmount(double buyerAppFinderFeeAmount);
 
-    @COLUMN_DEF(value = StandardDefault.SOME_VALUE,args = "Percent")
+    @Enumeration(enumClass = "in.succinct.beckn.Payment$CommissionType")
+    @IS_NULLABLE
     public String getBuyerAppFinderFeeType();
     public void setBuyerAppFinderFeeType(String buyerAppFinderFeeType);
 

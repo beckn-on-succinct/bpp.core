@@ -18,9 +18,6 @@ public class BeforeValidateNote extends BeforeModelValidateExtension<Note> {
     }
     @Override
     public void beforeValidate(Note model) {
-        RepresentativeAction action = RepresentativeAction.valueOf(model.getAction());
-        Representative loggedByRepresentor = model.getLoggedByRepresentor();
-        Application application = loggedByRepresentor.getSubscriber().getApplication();
         if (ObjectUtil.isVoid(model.getNoteId())){
             model.setNoteId(UUID.randomUUID().toString());
         }

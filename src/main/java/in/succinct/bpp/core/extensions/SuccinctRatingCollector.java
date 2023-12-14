@@ -34,7 +34,7 @@ public class SuccinctRatingCollector extends RatingCollector {
             throw new SellerException.InvalidOrder();
         }
 
-        Order lastKnown = LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(getAdaptor().getSubscriber()).getLastKnownOrder(context.getTransactionId());
+        Order lastKnown = LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(getAdaptor().getSubscriber()).getLastKnownOrder(context.getTransactionId(),true);
         if (lastKnown == null ){
             throw new SellerException.InvalidOrder();
         }

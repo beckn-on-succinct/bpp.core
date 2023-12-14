@@ -4,6 +4,8 @@ import com.venky.core.util.Bucket;
 import com.venky.core.util.ObjectUtil;
 import com.venky.swf.db.Database;
 import com.venky.swf.db.JdbcTypeHelper.TypeConverter;
+import com.venky.swf.plugins.background.core.DbTask;
+import com.venky.swf.plugins.background.core.TaskManager;
 import com.venky.swf.plugins.beckn.messaging.Subscriber;
 import in.succinct.beckn.BreakUp.BreakUpElement;
 import in.succinct.beckn.BreakUp.BreakUpElement.BreakUpCategory;
@@ -28,7 +30,6 @@ import in.succinct.beckn.Payment.CommissionType;
 import in.succinct.beckn.Payment.PaymentStatus;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.SellerException;
-import in.succinct.beckn.SellerException.CancellationNotPossible;
 import in.succinct.beckn.SellerException.GenericBusinessError;
 import in.succinct.beckn.SellerException.InvalidOrder;
 import in.succinct.beckn.SellerException.InvalidRequestError;
@@ -49,6 +50,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 public class LocalOrderSynchronizer {
 
     final Subscriber subscriber;
@@ -79,6 +81,9 @@ public class LocalOrderSynchronizer {
     }
 
     private BecknOrderMeta getOrderMeta(String transactionId) {
+        return getOrderMeta(transactionId,false);
+    }
+    private BecknOrderMeta getOrderMeta(String transactionId,boolean throwIfNotKnown) {
         if (transactionId == null) {
             throw new GenericBusinessError("Unable to find the transaction");
         }
@@ -91,11 +96,15 @@ public class LocalOrderSynchronizer {
             meta = Database.getTable(BecknOrderMeta.class).getRefreshed(meta);
 
             if (meta.getRawRecord().isNewRecord()) {
+                if (throwIfNotKnown){
+                    throw new GenericBusinessError("Unable to find the transaction");
+                }
                 meta.setOrderJson("{}");
                 meta.setStatusUpdatedAtJson("{}");
             }else {
                 meta = Database.getTable(BecknOrderMeta.class).lock(meta.getId());
             }
+
 
             map.put(transactionId, meta);
         }
@@ -165,8 +174,12 @@ public class LocalOrderSynchronizer {
     }
 
     public Order getLastKnownOrder(String transactionId) {
-        return getLastKnownOrder(getOrderMeta(transactionId));
+        return getLastKnownOrder(transactionId,false);
     }
+    public Order getLastKnownOrder(String transactionId, boolean throwIfNotKnown) {
+        return getLastKnownOrder(getOrderMeta(transactionId,throwIfNotKnown));
+    }
+
     public void sync(String transactionId,Order order){
         sync(transactionId,order,false);
     }
@@ -185,6 +198,33 @@ public class LocalOrderSynchronizer {
         return new Order(meta.getOrderJson());
     }
 
+
+    public static class FeesPersistingTask implements DbTask{
+        BuyerAppFees fees;
+        String searchTransactionId;
+        public FeesPersistingTask(BuyerAppFees fees , String searchTransactionId){
+            this.fees = fees;
+            this.searchTransactionId = searchTransactionId;
+        }
+        @Override
+        public void execute() {
+            fees = Database.getTable(BuyerAppFees.class).getRefreshed(fees);
+            if (fees.getRawRecord().isNewRecord()){
+                synchronized (FeesPersistingTask.class){
+                    fees = Database.getTable(BuyerAppFees.class).getRefreshed(fees);
+                    saveFees(fees,searchTransactionId);
+                }
+            }else{
+                saveFees(fees,searchTransactionId);
+            }
+        }
+        public static void saveFees(BuyerAppFees fees,String searchTransactionId){
+            if (fees.getRawRecord().isNewRecord() || fees.isDirty()) {
+                fees.setSearchTransactionId(searchTransactionId);
+                fees.save();
+            }
+        }
+    }
     public void sync(Request request, NetworkAdaptor adaptor, boolean persist) {
         if (request == null || request.getMessage() == null) {
             return;
@@ -206,6 +246,16 @@ public class LocalOrderSynchronizer {
                 }
                 if (payment.getBuyerAppFinderFeeType() != null) {
                     meta.setBuyerAppFinderFeeType(payment.getBuyerAppFinderFeeType().toString());
+                }
+                if (meta.getBuyerAppFinderFeeAmount() > 0 || meta.getBuyerAppFinderFeeType() != null){
+
+                    BuyerAppFees fees = Database.getTable(BuyerAppFees.class).newRecord();
+                    fees.setBapId(request.getContext().getBapId());
+                    fees.setDomainId(request.getContext().getDomain());
+                    fees.setBuyerAppFinderFeeAmount(meta.getBuyerAppFinderFeeAmount());
+                    fees.setBuyerAppFinderFeeType(meta.getBuyerAppFinderFeeType());
+
+                    TaskManager.instance().executeAsync(new FeesPersistingTask(fees,request.getContext().getTransactionId()),false);
                 }
             }
         } else {
@@ -242,8 +292,24 @@ public class LocalOrderSynchronizer {
                         }
                     }
                     fixFulfillment(request.getContext(), order);
+                    if (order.getProviderLocation() == null){
+                        order.setProviderLocation(lastKnown.getProviderLocation());
+                    }
+                    if (order.getProvider() == null){
+                        order.setProvider(lastKnown.getProvider());
+                    }
                     fixLocation(order);
 
+                    BuyerAppFees fees = Database.getTable(BuyerAppFees.class).newRecord();
+                    //fees.setSearchTransactionId(request.getContext().getTransactionId());
+                    fees.setBapId(request.getContext().getBapId());
+                    fees.setDomainId(request.getContext().getDomain());
+                    fees = Database.getTable(BuyerAppFees.class).getRefreshed(fees);
+                    if (!fees.getRawRecord().isNewRecord()) {
+                        fees = Database.getTable(BuyerAppFees.class).lock(fees.getId());
+                        meta.setBuyerAppFinderFeeAmount(fees.getBuyerAppFinderFeeAmount());
+                        meta.setBuyerAppFinderFeeType(fees.getBuyerAppFinderFeeType());
+                    }
                     if (order.getPayment() != null) {
                         if (order.getPayment().getBuyerAppFinderFeeType() != null) {
                             meta.setBuyerAppFinderFeeType(order.getPayment().getBuyerAppFinderFeeType().toString());
@@ -339,9 +405,16 @@ public class LocalOrderSynchronizer {
         Fulfillment fulfillment = order.getFulfillment();
 
         if (fulfillment == null) {
+            //if (order.getFulfillments().size() > 1) {
+                //throw new InvalidRequestError("Multiple fulfillments for order!");
+            //} else
             if (order.getFulfillments().size() > 1) {
-                throw new InvalidRequestError("Multiple fulfillments for order!");
-            } else if (order.getFulfillments().size() == 1) {
+                for (Fulfillment f :order.getFulfillments()){
+                    if (f.getType() != null && (f.getType().matches(FulfillmentType.store_pickup) || f.getType().matches(FulfillmentType.home_delivery) )){
+                        order.setFulfillment(f); //Set the primary fulfillment
+                    }
+                }
+            }else if (order.getFulfillments().size() == 1) {
                 fulfillment = order.getFulfillments().get(0);
                 order.setFulfillment(fulfillment);
             }
@@ -355,8 +428,6 @@ public class LocalOrderSynchronizer {
             }
         }
 
-
-        order.setFulfillments(new in.succinct.beckn.Fulfillments());
         if (fulfillment != null) {
             if (fulfillment.getType() == null) {
                 fulfillment.setType(FulfillmentType.home_delivery);
@@ -364,7 +435,7 @@ public class LocalOrderSynchronizer {
             if (ObjectUtil.isVoid(fulfillment.getId())) {
                 fulfillment.setId("fulfillment/" + fulfillment.getType() + "/" + context.getTransactionId());
             }
-            order.getFulfillments().add(fulfillment);
+            order.getFulfillments().add(fulfillment,true);
         }
     }
 
@@ -373,6 +444,10 @@ public class LocalOrderSynchronizer {
     }
     public boolean hasOrderReached(String transactionId, Status status){
         return getOrderMeta(transactionId).getStatusReachedAt(status) != null;
+    }
+
+    public Date getStatusReachedAt(String transactionId, Status status){
+        return getOrderMeta(transactionId).getStatusReachedAt(status);
     }
 
     public String getTrackingUrl(Order order) {
@@ -576,14 +651,14 @@ public class LocalOrderSynchronizer {
     private in.succinct.bpp.core.db.model.Subscriber createReceiver(BecknOrderMeta meta, Order order,ProviderConfig providerConfig) {
         BankAccount account = Database.getTable(BankAccount.class).newRecord();
         SettlementDetails details = order.getPayment().getSettlementDetails();                                                                                                                                                                                                                                              
-        if (details.size() > 0){
+        if (!details.isEmpty()){
             SettlementDetail detail = details.get(details.size()-1);
             account.setAccountNo(detail.getSettlementBankAccountNo());                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
             account.setAddress(detail.getBeneficiaryAddress());
             account.setBankCode(detail.getSettlementIfscCode());
             account.setBankName(detail.getBankName());
             account.setName(detail.getBeneficiaryName());
-            if (!ObjectUtil.equals(providerConfig.getVPA(),detail.getUpiAddress())){
+            if (!ObjectUtil.equals(providerConfig.getSettlementDetail().getUpiAddress(),detail.getUpiAddress())){
                 throw new SellerException.InvalidRequestError("Cannot change settlement vpa");
             }
             account.setVirtualPaymentAddress(detail.getUpiAddress());

@@ -171,7 +171,11 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
 
         if (fulfillment == null) {
             if (order.getFulfillments().size() > 1) {
-                throw new InvalidRequestError("Multiple fulfillments for order!");
+                for (Fulfillment f :order.getFulfillments()){
+                    if (f.getType() != null && (f.getType().matches(FulfillmentType.store_pickup) || f.getType().matches(FulfillmentType.home_delivery) )){
+                        order.setFulfillment(f); //Set the primary fulfillment
+                    }
+                }
             } else if (order.getFulfillments().size() == 1) {
                 order.setFulfillment(order.getFulfillments().get(0));
             } else {

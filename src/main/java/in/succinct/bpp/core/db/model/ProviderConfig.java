@@ -15,6 +15,7 @@ import in.succinct.beckn.Location;
 import in.succinct.beckn.Organization;
 import in.succinct.beckn.SellerException.DistanceServiceabilityError;
 import in.succinct.beckn.SellerException.DropoffLocationServiceabilityError;
+import in.succinct.beckn.SettlementDetail;
 import in.succinct.beckn.Time;
 import in.succinct.bpp.core.adaptor.rsp.ReceiverReconProvider;
 import org.json.simple.JSONArray;
@@ -65,13 +66,13 @@ public class ProviderConfig extends BecknObject {
         set("category",category);
     }
 
-    public String getVPA() {
-        return get("vpa");
+    public SettlementDetail getSettlementDetail(){
+        return get(SettlementDetail.class, "settlement_detail");
+    }
+    public void setSettlementDetail(SettlementDetail settlement_detail){
+        set("settlement_detail",settlement_detail);
     }
 
-    public void setVPA(String vpa) {
-        set("vpa", vpa);
-    }
 
     public double getMaxWriteOffAmountToAvoidRTO(){
         return getDouble("max_write_off_amount_to_avoid_rto" , Double.POSITIVE_INFINITY);
