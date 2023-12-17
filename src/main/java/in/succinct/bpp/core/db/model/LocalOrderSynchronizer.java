@@ -402,6 +402,7 @@ public class LocalOrderSynchronizer {
         if (order.getFulfillments() == null) {
             order.setFulfillments(new in.succinct.beckn.Fulfillments());
         }
+
         Fulfillment fulfillment = order.getFulfillment();
 
         if (fulfillment == null) {
@@ -409,15 +410,11 @@ public class LocalOrderSynchronizer {
                 //throw new InvalidRequestError("Multiple fulfillments for order!");
             //} else
             if (order.getFulfillments().size() > 1) {
-                for (Fulfillment f :order.getFulfillments()){
-                    if (f.getType() != null && (f.getType().matches(FulfillmentType.store_pickup) || f.getType().matches(FulfillmentType.home_delivery) )){
-                        order.setFulfillment(f); //Set the primary fulfillment
-                    }
-                }
+                fulfillment = order.getPrimaryFulfillment();
             }else if (order.getFulfillments().size() == 1) {
                 fulfillment = order.getFulfillments().get(0);
-                order.setFulfillment(fulfillment);
             }
+            order.setFulfillment(fulfillment);
         }
 
         if (fulfillment != null && fulfillment.getType() == null) {
@@ -429,9 +426,6 @@ public class LocalOrderSynchronizer {
         }
 
         if (fulfillment != null) {
-            if (fulfillment.getType() == null) {
-                fulfillment.setType(FulfillmentType.home_delivery);
-            }
             if (ObjectUtil.isVoid(fulfillment.getId())) {
                 fulfillment.setId("fulfillment/" + fulfillment.getType() + "/" + context.getTransactionId());
             }

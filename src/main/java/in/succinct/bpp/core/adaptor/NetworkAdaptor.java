@@ -2,8 +2,10 @@ package in.succinct.bpp.core.adaptor;
 
 
 import com.venky.cache.Cache;
+import com.venky.core.collections.SequenceSet;
 import com.venky.core.date.DateUtils;
 import com.venky.core.security.Crypt;
+import com.venky.core.util.ObjectHolder;
 import com.venky.core.util.ObjectUtil;
 import com.venky.swf.db.annotations.column.ui.mimes.MimeType;
 import com.venky.swf.db.model.CryptoKey;
@@ -422,30 +424,35 @@ public abstract class NetworkAdaptor extends BecknObjectWithId {
     Set<Class<?>> classesWithNoExtension = new HashSet<>();
     @SuppressWarnings("unchecked")
     private <B> B create(Class<B> clazz , String domainId){
-        Class<?> extendedClass = clazz;
-
-        if (BecknObject.class.isAssignableFrom(clazz)){
-            if (!clazz.getPackageName().startsWith("in.succinct.beckn")){
-                return create(clazz);
-            }
-            String extensionPackage = getDomains().get(domainId).getExtensionPackage();
-
-            if (ObjectUtil.isVoid(extensionPackage)) {
-                extensionPackage = getExtensionPackage();
-            }
-
-            if (!ObjectUtil.isVoid(extensionPackage)){
-                String clazzName = String.format("%s.%s",extensionPackage ,clazz.getSimpleName());
-                try {
-                    extendedClass = classesWithNoExtension.contains(clazz)? clazz : Class.forName(clazzName);
-                } catch (ClassNotFoundException e) {
-                    classesWithNoExtension.add(clazz);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            }
+        if (!BecknObject.class.isAssignableFrom(clazz)){
+            create(clazz);
+        }
+        if (classesWithNoExtension.contains(clazz)){
+            create(clazz);
         }
 
+        Set<String> packagesToCheck = new SequenceSet<>();
+        packagesToCheck.add(getDomains().get(domainId).getExtensionPackage());
+        packagesToCheck.add(getExtensionPackage());
+
+        Class<?> extendedClass = clazz;
+        for (String extensionPackage : packagesToCheck) {
+            if (ObjectUtil.isVoid(extensionPackage)) {
+                continue;
+            }
+            String clazzName = String.format("%s.%s", extensionPackage, clazz.getSimpleName());
+            try {
+                extendedClass = Class.forName(clazzName);
+                break;
+            } catch (ClassNotFoundException e) {
+                // try next
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if (extendedClass == clazz) {
+            classesWithNoExtension.add(clazz);
+        }
         return create(extendedClass);
     }
 

@@ -16,6 +16,7 @@ import in.succinct.beckn.Location;
 import in.succinct.beckn.Locations;
 import in.succinct.beckn.Message;
 import in.succinct.beckn.Order;
+import in.succinct.beckn.Order.Status;
 import in.succinct.beckn.Payment;
 import in.succinct.beckn.Payment.CollectedBy;
 import in.succinct.beckn.Payment.PaymentType;
@@ -34,6 +35,7 @@ import in.succinct.bpp.core.adaptor.api.BecknIdHelper;
 import in.succinct.bpp.core.adaptor.api.BecknIdHelper.Entity;
 import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptor.FulfillmentStatusAudit;
 import in.succinct.bpp.core.adaptor.igm.IssueTracker;
+import in.succinct.bpp.core.db.model.LocalOrderSynchronizerFactory;
 import in.succinct.bpp.core.db.model.ProviderConfig;
 import in.succinct.bpp.core.db.model.ProviderConfig.DeliveryRules;
 import org.json.simple.JSONArray;
@@ -157,9 +159,8 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
         return payments;
     }
     public void fixFulfillment(Context context, Order order){
-        if (order.getFulfillments() == null) {
-            order.setFulfillments(new in.succinct.beckn.Fulfillments());
-        }
+        LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(getSubscriber()).fixFulfillment(context,order);
+
         Map<FulfillmentType, in.succinct.beckn.Fulfillment> map = new HashMap<>();
         for (in.succinct.beckn.Fulfillment f :getFulfillments()) {
             map.put(f.getType(),f);
@@ -170,18 +171,8 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
         Fulfillment fulfillment = order.getFulfillment();
 
         if (fulfillment == null) {
-            if (order.getFulfillments().size() > 1) {
-                for (Fulfillment f :order.getFulfillments()){
-                    if (f.getType() != null && (f.getType().matches(FulfillmentType.store_pickup) || f.getType().matches(FulfillmentType.home_delivery) )){
-                        order.setFulfillment(f); //Set the primary fulfillment
-                    }
-                }
-            } else if (order.getFulfillments().size() == 1) {
-                order.setFulfillment(order.getFulfillments().get(0));
-            } else {
-                order.setFulfillment(map.get(FulfillmentType.store_pickup));
-            }
-            fulfillment = order.getFulfillment();
+            fulfillment = map.get(FulfillmentType.store_pickup);
+            order.setFulfillment(fulfillment);
         }
 
         if (fulfillment != null && fulfillment.getType() == null){
@@ -194,10 +185,6 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
                 order.setFulfillment(null);
                 order.getFulfillments().setInner(new JSONArray());
             }
-        }
-
-        if (fulfillment != null && fulfillment.getId() == null){
-            fulfillment.setId("fulfillment/"+fulfillment.getType()+"/"+context.getTransactionId());
         }
 
         order.setFulfillments(new Fulfillments());
