@@ -289,12 +289,6 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
     public void cancel(Request request, Request reply){
         Order order = request.getMessage().getOrder();
         if (order == null){
-            if (request.getMessage().getOrderId() != null){
-                order = new Order();
-                order.setId(request.getMessage().getOrderId());
-            }
-        }
-        if (order == null){
             throw new InvalidOrder();
         }
         Order cancelledOrder = cancel(order);

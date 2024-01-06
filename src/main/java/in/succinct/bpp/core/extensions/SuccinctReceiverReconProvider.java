@@ -1,5 +1,6 @@
 package in.succinct.bpp.core.extensions;
 
+import com.venky.core.util.MultiException;
 import in.succinct.beckn.Order;
 import in.succinct.beckn.Order.Orders;
 import in.succinct.beckn.Request;
@@ -24,8 +25,13 @@ public class SuccinctReceiverReconProvider extends ReceiverReconProvider {
         response.setSuppressed(true); // will be sent later as a callback.
         Orders orders = request.getMessage().getOrders();
         LocalOrderSynchronizer synchronizer = LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(getAdaptor().getSubscriber());
+        MultiException exception = new MultiException();
         for (Order order : orders){
-            synchronizer.receiver_recon(order,getAdaptor().getProviderConfig());
+            try {
+                synchronizer.receiver_recon(request.getContext(),order, getAdaptor());
+            }catch (RuntimeException e){
+                exception.add(e);
+            }
         }
 
     }

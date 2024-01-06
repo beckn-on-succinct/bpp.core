@@ -7,6 +7,7 @@ import com.venky.swf.db.annotations.column.validations.Enumeration;
 import com.venky.swf.db.model.Model;
 import in.succinct.bpp.core.db.model.BecknOrderMeta;
 import in.succinct.bpp.core.db.model.Subscriber;
+import in.succinct.bpp.core.db.model.igm.Issue;
 
 public interface Settlement extends Model {
     @UNIQUE_KEY("O")
@@ -118,5 +119,6 @@ public interface Settlement extends Model {
     @UNIQUE_KEY("O,S")
     public int getSequenceNumber();
     public void setSequenceNumber(int sequenceNumber);
+
 
 }

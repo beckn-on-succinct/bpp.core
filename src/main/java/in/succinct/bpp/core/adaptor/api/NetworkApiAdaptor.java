@@ -185,22 +185,10 @@ public abstract class NetworkApiAdaptor {
         }
 
         CancellationReasonCode code = request.getMessage().getCancellationReasonCode();
-        if (code != null && code.isUsableByBuyerParty()){
-            Cancellation cancellation = order.getCancellation();
-            if (cancellation == null){
-                cancellation = new Cancellation();
-                order.setCancellation(cancellation);
-            }
-            cancellation.setSelectedReason(new Option());
-            cancellation.setCancelledBy(CancelledBy.BUYER);
-            cancellation.setTime(request.getContext().getTimestamp());
-            cancellation.getSelectedReason().setDescriptor(new Descriptor());
-            cancellation.getSelectedReason().getDescriptor().setCode(CancellationReasonCode.convertor.toString(code));
-
-        }else {
+        if (code != null && !code.isUsableByBuyerParty()){
             throw new SellerException.InvalidCancellationReason();
         }
-        LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(adaptor.getSubscriber()).sync(request.getContext().getTransactionId(),order);
+        //LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(adaptor.getSubscriber()).sync(request.getContext().getTransactionId(),order);
 
         adaptor.cancel(request,reply);
 

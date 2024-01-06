@@ -57,7 +57,11 @@ public class IgmWebHook implements Extension {
         context.setCountry(eCommerceAdaptor.getSubscriber().getCountry());
         context.setCity(eCommerceAdaptor.getSubscriber().getCity());
         context.setTimestamp(new Date());
-        context.setAction("on_issue_status");
+        if (issue.getComplainant().getSubscriberId().equals(eCommerceAdaptor.getSubscriber().getSubscriberId())){
+            context.setAction("issue");
+        }else {
+            context.setAction("on_issue_status");
+        }
         context.setDomain(eCommerceAdaptor.getSubscriber().getDomain());
         context.setNetworkId(networkAdaptor.getId());
         //Fill any other attributes needed.

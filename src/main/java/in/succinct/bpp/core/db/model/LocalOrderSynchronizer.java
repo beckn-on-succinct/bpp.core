@@ -2,33 +2,56 @@ package in.succinct.bpp.core.db.model;
 
 import com.venky.core.util.Bucket;
 import com.venky.core.util.ObjectUtil;
+import com.venky.network.Edge;
 import com.venky.swf.db.Database;
 import com.venky.swf.db.JdbcTypeHelper.TypeConverter;
 import com.venky.swf.plugins.background.core.DbTask;
 import com.venky.swf.plugins.background.core.TaskManager;
 import com.venky.swf.plugins.beckn.messaging.Subscriber;
+import com.venky.swf.sql.Conjunction;
+import com.venky.swf.sql.Expression;
+import com.venky.swf.sql.Operator;
+import com.venky.swf.sql.Select;
+import in.succinct.beckn.Amount;
+import in.succinct.beckn.BecknStrings;
 import in.succinct.beckn.BreakUp.BreakUpElement;
 import in.succinct.beckn.BreakUp.BreakUpElement.BreakUpCategory;
 import in.succinct.beckn.Cancellation;
 import in.succinct.beckn.Cancellation.CancelledBy;
+import in.succinct.beckn.CancellationReasons.CancellationReasonCode;
 import in.succinct.beckn.Context;
 import in.succinct.beckn.Descriptor;
 import in.succinct.beckn.Fulfillment;
 import in.succinct.beckn.Fulfillment.FulfillmentStatus;
 import in.succinct.beckn.Fulfillment.FulfillmentType;
 import in.succinct.beckn.Intent;
+import in.succinct.beckn.Issue;
+import in.succinct.beckn.Issue.EscalationLevel;
+import in.succinct.beckn.IssueCategory;
+import in.succinct.beckn.IssueSubCategory;
 import in.succinct.beckn.Item;
 import in.succinct.beckn.Locations;
+import in.succinct.beckn.Message;
+import in.succinct.beckn.Note;
+import in.succinct.beckn.Note.Notes;
 import in.succinct.beckn.Option;
 import in.succinct.beckn.Order;
+import in.succinct.beckn.Order.OrderReconStatus;
+import in.succinct.beckn.Order.Orders;
 import in.succinct.beckn.Order.ReconStatus;
+import in.succinct.beckn.Order.SettlementReasonCode;
 import in.succinct.beckn.Order.Status;
+import in.succinct.beckn.Organization;
 import in.succinct.beckn.Payer;
 import in.succinct.beckn.Payment;
 import in.succinct.beckn.Payment.CollectedBy;
 import in.succinct.beckn.Payment.CommissionType;
 import in.succinct.beckn.Payment.PaymentStatus;
+import in.succinct.beckn.Representative;
+import in.succinct.beckn.Representative.Complainant;
+import in.succinct.beckn.Representative.Respondent;
 import in.succinct.beckn.Request;
+import in.succinct.beckn.Role;
 import in.succinct.beckn.SellerException;
 import in.succinct.beckn.SellerException.GenericBusinessError;
 import in.succinct.beckn.SellerException.InvalidOrder;
@@ -36,13 +59,21 @@ import in.succinct.beckn.SellerException.InvalidRequestError;
 import in.succinct.beckn.SettlementCorrection;
 import in.succinct.beckn.SettlementDetail;
 import in.succinct.beckn.SettlementDetails;
+import in.succinct.beckn.Time;
+import in.succinct.bpp.core.adaptor.CommerceAdaptor;
 import in.succinct.bpp.core.adaptor.NetworkAdaptor;
+import in.succinct.bpp.core.adaptor.NetworkAdaptorFactory;
 import in.succinct.bpp.core.adaptor.api.BecknIdHelper;
 import in.succinct.bpp.core.adaptor.api.BecknIdHelper.Entity;
 import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptor.FulfillmentStatusAudit;
+import in.succinct.bpp.core.adaptor.igm.IssueTracker;
+import in.succinct.bpp.core.adaptor.igm.IssueTrackerFactory;
 import in.succinct.bpp.core.db.model.rsp.BankAccount;
+import in.succinct.bpp.core.db.model.rsp.Correction;
 import in.succinct.bpp.core.db.model.rsp.Settlement;
+import in.succinct.bpp.core.extensions.SuccinctIssueTracker;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
@@ -50,6 +81,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 public class LocalOrderSynchronizer {
 
@@ -90,21 +122,24 @@ public class LocalOrderSynchronizer {
         Map<String, BecknOrderMeta> map = getOrderMetaMap();
         BecknOrderMeta meta = map.get(transactionId);
         if (meta == null) {
-            meta = Database.getTable(BecknOrderMeta.class).newRecord();
-            meta.setBecknTransactionId(transactionId);
-            meta.setSubscriberId(subscriber.getSubscriberId());
-            meta = Database.getTable(BecknOrderMeta.class).getRefreshed(meta);
+            Select select = new Select().from(BecknOrderMeta.class);
+            select.where(new Expression(select.getPool(), Conjunction.AND).
+                    add(new Expression(select.getPool(),"BECKN_TRANSACTION_ID", Operator.EQ, transactionId)).
+                    add(new Expression(select.getPool(),"SUBSCRIBER_ID", Operator.EQ, subscriber.getSubscriberId()))).orderBy("ID DESC");
+            List<BecknOrderMeta> list = select.execute(1);
 
-            if (meta.getRawRecord().isNewRecord()) {
+            if (list.isEmpty()) {
                 if (throwIfNotKnown){
                     throw new GenericBusinessError("Unable to find the transaction");
                 }
+                meta = Database.getTable(BecknOrderMeta.class).newRecord();
+                meta.setSubscriberId(subscriber.getSubscriberId());
+                meta.setBecknTransactionId(transactionId);
                 meta.setOrderJson("{}");
                 meta.setStatusUpdatedAtJson("{}");
             }else {
-                meta = Database.getTable(BecknOrderMeta.class).lock(meta.getId());
+                meta = list.get(0);
             }
-
 
             map.put(transactionId, meta);
         }
@@ -231,7 +266,9 @@ public class LocalOrderSynchronizer {
         }
 
         BecknOrderMeta meta = getOrderMeta(request.getContext().getTransactionId());
-        meta.setContextJson(request.getContext().toString());
+        if (meta.getRawRecord().isNewRecord()) {
+            meta.setContextJson(request.getContext().toString());
+        }
         if (ObjectUtil.isVoid(meta.getNetworkId())) {
             meta.setNetworkId(adaptor.getId());
         } else if (!ObjectUtil.equals(adaptor.getId(), meta.getNetworkId())) {
@@ -275,7 +312,7 @@ public class LocalOrderSynchronizer {
                                 order.setCancellation( new Cancellation());
                                 order.getCancellation().setSelectedReason(new Option());
                                 order.getCancellation().getSelectedReason().setDescriptor(new Descriptor());
-                                order.getCancellation().getSelectedReason().getDescriptor().setCode(request.getMessage().getCancellationReasonCode().name());
+                                order.getCancellation().getSelectedReason().getDescriptor().setCode(CancellationReasonCode.convertor.toString(request.getMessage().getCancellationReasonCode()));
                                 order.getCancellation().setCancelledBy(CancelledBy.BUYER);
                             }
                         }
@@ -474,18 +511,21 @@ public class LocalOrderSynchronizer {
         return deliveryElement == null ? 0 : deliveryElement.getPrice().getValue();
     }
 
-    public void receiver_recon(Order order, ProviderConfig providerConfig) {
+    public void receiver_recon(Context rspContext , Order order, CommerceAdaptor adaptor) {
+        ProviderConfig providerConfig = adaptor.getProviderConfig();
         BecknOrderMeta meta = getOrderMeta(order);
         Order lastKnown = getLastKnownOrder(meta);
 
         boolean ok = ObjectUtil.equals(lastKnown.getState(), order.getState());
         ok = ok && validatePayment(order, lastKnown, meta, providerConfig);
         if (!ok){
-            return;
+            throw new SellerException.PaymentNotSupported("Payment object has changed!");
         }
 
         double deliveryAmount = getDeliveryCharges(lastKnown);
-        double deliveryGST = (providerConfig.getDeliveryGstPct() / 100.0) * deliveryAmount;
+        double deliveryGstFraction = (providerConfig.getDeliveryGstPct() / 100.0);
+
+        double deliveryGST =  providerConfig.isTaxIncludedInPrice() ? (deliveryGstFraction /  (1 + deliveryGstFraction))* deliveryAmount : deliveryGstFraction * deliveryAmount;
 
         boolean sameState = ObjectUtil.equals(lastKnown.getFulfillment().getStart().getLocation().getAddress().getState(), lastKnown.getFulfillment().getEnd().getLocation().getAddress().getState());
         Bucket cgst = new Bucket();
@@ -499,6 +539,8 @@ public class LocalOrderSynchronizer {
         }
 
         double invoiceAmount = lastKnown.getPayment().getParams().getAmount();
+        //If invoice has gst mentioned separately, TDS will be onb invoice amount - GST. For now Dec 31 2023
+        // We will assume invoice is inclusive of GST and GST is not shown as separate line iten.
 
         TypeConverter<Double> doubleConverter = Database.getJdbcTypeHelper("").getTypeRef(Double.class).getTypeConverter();
         double feeAmount = doubleConverter.valueOf(lastKnown.getPayment().getBuyerAppFinderFeeAmount());
@@ -509,8 +551,8 @@ public class LocalOrderSynchronizer {
 
 
         double tcs_gst = (providerConfig.getGstWithheldPercent() / 100.0) * invoiceAmount;
-        double tds = providerConfig.getTaxWithheldPercent() * invoiceAmount / 100.0;
-        double buyer_app_fee_gst = (providerConfig.getBuyerAppCommissionGstPct() / 100.0) * feeAmount;
+        double tds =  ( providerConfig.getTaxWithheldPercent()  / 100.0 ) * invoiceAmount;
+        double buyer_app_fee_gst = (providerConfig.getBuyerAppCommissionGstPct() / 100.0) * feeAmount; // Fees don't include gst.
 
         Payment payment = order.getPayment();
         if (payment.getStatus() != PaymentStatus.PAID || payment.getCollectedBy() != CollectedBy.BAP) {
@@ -520,7 +562,9 @@ public class LocalOrderSynchronizer {
         Bucket orderAmount = new Bucket();
         for (Item item : lastKnown.getItems()) {
             orderAmount.increment(item.getPrice().getValue());
-            double gst = item.getPrice().getValue() * doubleConverter.valueOf(item.getTaxRate()) / 100.0;
+            double gstf = doubleConverter.valueOf(item.getTaxRate()) / 100.0;
+            double gst = item.getPrice().getValue() * (providerConfig.isTaxIncludedInPrice()? gstf/(gstf + 1) : gstf ) ;
+
             if (sameState) {
                 cgst.increment(gst / 2);
                 sgst.increment(gst / 2);
@@ -529,8 +573,8 @@ public class LocalOrderSynchronizer {
             }
         }
 
-        in.succinct.bpp.core.db.model.Subscriber collector = createCollector(meta,order);
-        in.succinct.bpp.core.db.model.Subscriber receiver = createReceiver(meta,order,providerConfig);
+        in.succinct.bpp.core.db.model.Subscriber collector = createCollector(meta,rspContext,order);
+        in.succinct.bpp.core.db.model.Subscriber receiver = createReceiver(meta,rspContext,order,providerConfig);
 
         SettlementDetails settlementDetails1 = payment.getSettlementDetails();
         List<SettlementDetail> settlementDetails = new ArrayList<>();
@@ -555,19 +599,20 @@ public class LocalOrderSynchronizer {
             }
             if (i == 0) {
                 settlement.setBuyerFeeAmount(feeAmount);
-                settlement.setInvoiceAmount(invoiceAmount);
+                    settlement.setInvoiceAmount(invoiceAmount);
+                settlement.setDeliveryAmount(deliveryAmount);
+                settlement.setOrderAmount(orderAmount.doubleValue());
+
                 settlement.setCGst(cgst.doubleValue());
                 settlement.setSgst(sgst.doubleValue());
                 settlement.setIgst(igst.doubleValue());
 
-                settlement.setDeliveryAmount(deliveryAmount);
-                settlement.setOrderAmount(orderAmount.doubleValue());
                 settlement.setGSTWithheld(order.getGstWithheld().getValue());
                 settlement.setTDSWithheld(order.getIncomeTaxWithheld().getValue());
 
                 settlement.setDiffAmount(order.getDiffAmount());
                 settlement.setCollectionTxnId(order.getCollectionTransactionId());
-                settlement.setExpectedCreditInBank(settlement.getInvoiceAmount() - settlement.getBuyerFeeAmount() - settlement.getTDSWithheld() - settlement.getGSTWithheld());
+                settlement.setExpectedCreditInBank(settlement.getInvoiceAmount() - settlement.getBuyerFeeAmount() - buyer_app_fee_gst - settlement.getTDSWithheld() - settlement.getGSTWithheld());
             }
 
             settlement.setSettledAmount(detail.getSettlementAmount());
@@ -600,13 +645,20 @@ public class LocalOrderSynchronizer {
         }
         SettlementCorrection correction  = order.getSettlementCorrection();
         if (correction != null && correction.getDiffAmount() != null) {
-            Settlement settlement = Database.getTable(Settlement.class).newRecord();
+            Select select = new Select().from(Correction.class);
+            List<Correction> corrections = select.where(new Expression(select.getPool(),Conjunction.AND).
+                    add(new Expression(select.getPool(),"BECKN_ORDER_META_ID",Operator.EQ,meta.getId()))).execute();
+
+            Correction settlement = Database.getTable(Correction.class).newRecord();
             settlement.setBecknOrderMetaId(meta.getId());
-            settlement.setSequenceNumber(9999);
-            settlement = Database.getTable(Settlement.class).getRefreshed(settlement);
-            settlement.setSettledAmount(correction.getDiffAmount());
+            settlement.setSequenceNumber(corrections.size()+1);
+            settlement = Database.getTable(Correction.class).getRefreshed(settlement);
+            settlement.setSettledAmount(correction.getDiffAmount().getValue());
             settlement.setSettlementReference(correction.getSettlementReference());
             settlement.setReconStatus(correction.getReconStatus().name());
+            settlement.setPreviousSettlementAmount(correction.getPreviousSettledAmount().getValue());
+            settlement.setPreviousSettlementReference(correction.getPrevSettlementReferenceNo().toString());
+            settlement.setCorrectionAmount(correction.getOrderCorrectionAmount().getValue());
             settlement.setReceiverPartyId(receiver.getId());
             settlement.setCollectorPartyId(collector.getId());
             settlement.setSettlementId(correction.getSettlementId());
@@ -622,10 +674,134 @@ public class LocalOrderSynchronizer {
             settlement.save();
         }
         lastKnown.update(order);
+        meta.setRspContextJson(rspContext.toString());
         meta.setOrderJson(lastKnown.getInner().toString());
+        if (settled.doubleValue() < expectedCredit.doubleValue()){
+            // All Is well.
+            double diff = expectedCredit.doubleValue() - settled.doubleValue();
+            Issue issue = raisePaymentIssue(rspContext,adaptor,meta , diff);
+            sendOnReceiverRecon(rspContext,adaptor,meta,issue, diff);
+
+        }
+
         meta.save();
     }
 
+    private void sendOnReceiverRecon(Context rspContext, CommerceAdaptor adaptor, BecknOrderMeta meta, Issue issue, double diff) {
+        //
+        Request response = new Request();
+        response.setContext(rspContext);
+        response.setMessage(new Message());
+        response.getMessage().setOrders(new Orders());
+        Order order = new Order();
+        Order lastKnown = new Order(meta.getOrderJson());
+        order.setId(lastKnown.getId());
+        order.setInvoiceNo(lastKnown.getInvoiceNo());
+        order.setCollectorSubscriberId(lastKnown.getCollectorSubscriberId());
+        order.setReceiverSubscriberId(lastKnown.getReceiverSubscriberId());
+        order.setOrderReconStatus(lastKnown.getOrderReconStatus());
+        order.setCollectionTransactionId(lastKnown.getCollectionTransactionId());
+        order.setSettlementId(lastKnown.getSettlementId());
+        order.setSettlementReference(lastKnown.getSettlementReference());
+
+        order.setCounterpartyReconStatus(ReconStatus.UNDER_PAID);
+
+        Amount diffAmount = new Amount();
+        diffAmount.setValue(diff);
+        diffAmount.setCurrency(lastKnown.getPayment().getParams().getCurrency());
+        order.setCounterpartyDiffAmount(diffAmount);
+
+        order.setReconMessage(new Descriptor());
+        order.getReconMessage().setCode("less");
+        order.getReconMessage().setName("lesser amount");
+
+        order.setSettlementReasonCode(SettlementReasonCode.CORRECTION);
+        order.setSettlementCorrection(new SettlementCorrection());
+
+        SettlementCorrection correction = order.getSettlementCorrection();
+        correction.setIssueInitiatorRef(issue.getId());
+        correction.setIssueType(IssueCategory.convertor.toString(issue.getIssueCategory()));
+        correction.setIssueSubtype(IssueSubCategory.convertor.toString(issue.getIssueSubCategory()));
+        correction.setOrderId(order.getId());
+        correction.setPrevSettlementReferenceNo(new BecknStrings());
+
+        List<Settlement> settlements = meta.getSettlements();
+        Settlement last = settlements.get(0);
+        Bucket expected = new Bucket();
+        Bucket actual = new Bucket();
+        for (Settlement settlement : settlements) {
+            expected.increment(settlement.getExpectedCreditInBank());
+            actual.increment(settlement.getSettledAmount());
+            correction.getPrevSettlementReferenceNo().add(settlement.getSettlementReference());
+        }
+        Amount orderAmount =  new Amount();
+        orderAmount.setCurrency(order.getPayment().getParams().getCurrency());
+        orderAmount.setValue(expected.doubleValue());
+        correction.setOrderAmount(orderAmount);
+        correction.setStatus(order.getState());
+
+        correction.setOrderCorrectionAmount(orderAmount);
+        Amount previousSettledAmount = new Amount();
+        previousSettledAmount.setCurrency(orderAmount.getCurrency());
+        previousSettledAmount.setValue(actual.doubleValue());
+        correction.setPreviousSettledAmount(previousSettledAmount);
+
+        correction.setDiffAmount(diffAmount);
+        correction.setSettlementId(lastKnown.getSettlementId());
+        correction.setSettlementReference(lastKnown.getSettlementReference());
+        correction.setReconStatus(ReconStatus.UNDER_PAID);
+        correction.setMessage(order.getReconMessage());
+
+
+
+    }
+
+    private Issue raisePaymentIssue(Context rspContext, CommerceAdaptor adaptor, BecknOrderMeta orderMeta, double diff) {
+        Context context = new Context(orderMeta.getContextJson());
+        Issue issue = new Issue();
+        issue.setCreatedAt(new Date());
+        issue.setId(UUID.randomUUID().toString());
+        issue.setIssueCategory(IssueCategory.PAYMENT);
+        issue.setIssueSubCategory(IssueSubCategory.PAYMENT_UNDER_PAID);
+        issue.setEscalationLevel(EscalationLevel.ISSUE);
+        issue.setExpectedResponseTime(new Time());
+        issue.getExpectedResponseTime().setDuration(Duration.ofDays(2));
+        issue.setExpectedResolutionTime(new Time());
+        issue.getExpectedResolutionTime().setDuration(Duration.ofDays(5));
+        issue.setOrder(new Order(orderMeta.getOrderJson()));
+        issue.setComplainant(new Complainant());
+        issue.getComplainant().setRole(Role.COMPLAINANT_PLATFORM);
+        issue.getComplainant().setSubscriberId(adaptor.getSubscriber().getSubscriberId());
+        issue.getComplainant().setOrganization(new Organization());
+        issue.getComplainant().getOrganization().setName(adaptor.getSubscriber().getSubscriberId() + ":" + context.getDomain());
+        issue.getComplainant().setPerson(adaptor.getProviderConfig().getOrganization().getAuthorizedSignatory().getPerson());
+        issue.getComplainant().setContact(adaptor.getProviderConfig().getSupportContact());
+        Note note = new Note();
+        issue.setNotes(new Notes());
+        issue.getNotes().add(note);
+        note.setDescription(new Descriptor());
+        note.getDescription().setLongDesc("Payment paid is short by " + diff);
+        note.setCreatedAt(new Date());
+        note.setCreatedBy(issue.getComplainant());
+        issue.setOrder(new Order(orderMeta.getOrderJson()));
+        SuccinctIssueTracker succinctIssueTracker = (SuccinctIssueTracker) adaptor.getIssueTracker();
+        in.succinct.bpp.core.db.model.igm.Issue dbIssue = succinctIssueTracker.getDbIssue(context,issue);
+        Issue out = SuccinctIssueTracker.getBecknIssue(dbIssue);
+
+        //Send on_receiver_recon
+        Request reply = new Request();
+        reply.setContext(context);
+        context.setAction("issue");
+        reply.setMessage(new Message());
+        reply.getMessage().setIssue(out);
+
+
+
+        NetworkAdaptorFactory.getInstance().getAdaptor(orderMeta.getNetworkId()).getApiAdaptor().callback(adaptor,reply);
+
+        return out;
+
+    }
 
 
     private boolean validatePayment(Order order, Order lastKnown, BecknOrderMeta meta, ProviderConfig providerConfig) {
@@ -642,46 +818,46 @@ public class LocalOrderSynchronizer {
         ok = ok && ObjectUtil.equals(lastKnown.getPayment().getWithholdingAmount(), order.getPayment().getWithholdingAmount()) || ObjectUtil.isVoid(lastKnown.getPayment().getWithholdingAmount());
         return ok;
     }
-    private in.succinct.bpp.core.db.model.Subscriber createReceiver(BecknOrderMeta meta, Order order,ProviderConfig providerConfig) {
-        BankAccount account = Database.getTable(BankAccount.class).newRecord();
+    private in.succinct.bpp.core.db.model.Subscriber createReceiver(BecknOrderMeta meta,Context rspContext ,  Order order, ProviderConfig providerConfig) {
+        BankAccount receiverAccount = Database.getTable(BankAccount.class).newRecord();
         SettlementDetails details = order.getPayment().getSettlementDetails();                                                                                                                                                                                                                                              
         if (!details.isEmpty()){
             SettlementDetail detail = details.get(details.size()-1);
-            account.setAccountNo(detail.getSettlementBankAccountNo());                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
-            account.setAddress(detail.getBeneficiaryAddress());
-            account.setBankCode(detail.getSettlementIfscCode());
-            account.setBankName(detail.getBankName());
-            account.setName(detail.getBeneficiaryName());
+            receiverAccount.setAccountNo(detail.getSettlementBankAccountNo());
+            receiverAccount.setAddress(detail.getBeneficiaryAddress());
+            receiverAccount.setBankCode(detail.getSettlementIfscCode());
+            receiverAccount.setBankName(detail.getBankName());
+            receiverAccount.setName(detail.getBeneficiaryName());
             if (!ObjectUtil.equals(providerConfig.getSettlementDetail().getUpiAddress(),detail.getUpiAddress())){
                 throw new SellerException.InvalidRequestError("Cannot change settlement vpa");
             }
-            account.setVirtualPaymentAddress(detail.getUpiAddress());
-            account = Database.getTable(BankAccount.class).getRefreshed(account);
-            account.save();
+            receiverAccount.setVirtualPaymentAddress(detail.getUpiAddress());
+            receiverAccount = Database.getTable(BankAccount.class).getRefreshed(receiverAccount);
+            receiverAccount.save();
         }
 
 
 
-        in.succinct.bpp.core.db.model.Subscriber subscriber = Database.getTable(in.succinct.bpp.core.db.model.Subscriber.class).newRecord();
+        in.succinct.bpp.core.db.model.Subscriber receiverSubscriber = Database.getTable(in.succinct.bpp.core.db.model.Subscriber.class).newRecord();
         Context context = new Context(meta.getContextJson());
 
+        receiverSubscriber.setSubscriberId(order.getReceiverSubscriberId());
         if (order.getPayment().getCollectedBy().equals(CollectedBy.BAP)) {
-            subscriber.setSubscriberId(context.getBppId());
-            subscriber.setRole(in.succinct.beckn.Subscriber.SUBSCRIBER_TYPE_BPP);
+            receiverSubscriber.setRole(in.succinct.beckn.Subscriber.SUBSCRIBER_TYPE_BPP);
+            receiverSubscriber.setRspSubscriberId(rspContext.getBppId());
         }else {
-            subscriber.setSubscriberId(context.getBapId());                                                                                                                                                         
-            subscriber.setRole(in.succinct.beckn.Subscriber.SUBSCRIBER_TYPE_BAP);
+            receiverSubscriber.setRole(in.succinct.beckn.Subscriber.SUBSCRIBER_TYPE_BAP);
+            receiverSubscriber.setRspSubscriberId(rspContext.getBapId());
         }
-        subscriber.setDomainId(context.getDomain());
-        subscriber.setNetworkId(meta.getNetworkId());
-        subscriber.setRspSubscriberId(order.getReceiverSubscriberId());
-        subscriber.setBankAccountId(account.getId());
-        subscriber  = Database.getTable(in.succinct.bpp.core.db.model.Subscriber.class).getRefreshed(subscriber);
-        subscriber.save();
-        return subscriber;
+        receiverSubscriber.setDomainId(context.getDomain());
+        receiverSubscriber.setNetworkId(meta.getNetworkId());
+        receiverSubscriber.setBankAccountId(receiverAccount.getId());
+        receiverSubscriber  = Database.getTable(in.succinct.bpp.core.db.model.Subscriber.class).getRefreshed(receiverSubscriber);
+        receiverSubscriber.save();
+        return receiverSubscriber;
     }
 
-    private in.succinct.bpp.core.db.model.Subscriber createCollector(BecknOrderMeta meta, Order order) {
+    private in.succinct.bpp.core.db.model.Subscriber createCollector(BecknOrderMeta meta, Context rspContext , Order order) {
         BankAccount account = Database.getTable(BankAccount.class).newRecord();
         Payer payer = order.getPayer();
         account.setAccountNo(payer.getAccountNo());
@@ -693,22 +869,23 @@ public class LocalOrderSynchronizer {
         account = Database.getTable(BankAccount.class).getRefreshed(account);
         account.save();
 
-        in.succinct.bpp.core.db.model.Subscriber subscriber = Database.getTable(in.succinct.bpp.core.db.model.Subscriber.class).newRecord();
-        Context context = new Context(meta.getContextJson());
+        in.succinct.bpp.core.db.model.Subscriber collectorSubscriber = Database.getTable(in.succinct.bpp.core.db.model.Subscriber.class).newRecord();
+        collectorSubscriber.setSubscriberId(order.getCollectorSubscriberId());
+
         if (order.getPayment().getCollectedBy().equals(CollectedBy.BAP)) {
-            subscriber.setSubscriberId(context.getBapId());
-            subscriber.setRole(in.succinct.beckn.Subscriber.SUBSCRIBER_TYPE_BAP);
+            collectorSubscriber.setRole(in.succinct.beckn.Subscriber.SUBSCRIBER_TYPE_BAP);
+            collectorSubscriber.setRspSubscriberId(rspContext.getBapId());
         }else {
-            subscriber.setSubscriberId(context.getBppId());
-            subscriber.setRole(in.succinct.beckn.Subscriber.SUBSCRIBER_TYPE_BPP);
+            collectorSubscriber.setRole(in.succinct.beckn.Subscriber.SUBSCRIBER_TYPE_BPP);
+            collectorSubscriber.setRspSubscriberId(rspContext.getBppId());
         }
-        subscriber.setDomainId(context.getDomain());
-        subscriber.setNetworkId(meta.getNetworkId());
-        subscriber.setRspSubscriberId(order.getCollectorSubscriberId());
-        subscriber.setBankAccountId(account.getId());
-        subscriber = Database.getTable(in.succinct.bpp.core.db.model.Subscriber.class).getRefreshed(subscriber);
-        subscriber.save();
-        return subscriber;
+        Context context = new Context(meta.getContextJson());
+        collectorSubscriber.setDomainId(context.getDomain());
+        collectorSubscriber.setNetworkId(meta.getNetworkId());
+        collectorSubscriber.setBankAccountId(account.getId());
+        collectorSubscriber = Database.getTable(in.succinct.bpp.core.db.model.Subscriber.class).getRefreshed(collectorSubscriber);
+        collectorSubscriber.save();
+        return collectorSubscriber;
     }
 
     public List<Settlement> getSettlements(String becknTransactionId) {

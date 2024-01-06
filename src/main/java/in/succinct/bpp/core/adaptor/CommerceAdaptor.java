@@ -193,19 +193,46 @@ public abstract class CommerceAdaptor{
         Contact contact = user == null ? null : user.getContact();
         String email = contact == null ? null : contact.getEmail();
         Company company = null;
+        Company companyByEmail = null;
         if (email != null){
             String domain = email.substring(email.indexOf('@')+1);
-            company = CompanyFinder.getInstance().find(domain);
+            companyByEmail = CompanyFinder.getInstance().find(domain);
         }
-        if (company == null ){
-            company = CompanyFinder.getInstance().find(subscriberId);
+        Company companyBySubscriberId = CompanyFinder.getInstance().find(subscriberId);
+        Company companyByName = null;
+        if (organization != null && !ObjectUtil.isVoid(organization.getName())) {
+            companyByName = Database.getTable(Company.class).newRecord();
+            companyByName.setName(organization.getName());
+            if (organization.getDateOfIncorporation() != null) {
+                companyByName.setDateOfIncorporation(new Date(organization.getDateOfIncorporation().getTime()));
+            }
+            companyByName = Database.getTable(Company.class).getRefreshed(companyByName);
         }
 
-        if (company.getRawRecord().isNewRecord()){
-            company.setName(organization.getName());
-            if (organization.getDateOfIncorporation() != null) {
-                company.setDateOfIncorporation(new Date(organization.getDateOfIncorporation().getTime()));
+        if (companyByEmail != null && !companyByEmail.getRawRecord().isNewRecord()){
+            company = companyByEmail;
+        }else if (companyBySubscriberId != null && !companyBySubscriberId.getRawRecord().isNewRecord()){
+            company = companyBySubscriberId;
+        }else if (companyByName != null && !companyByName.getRawRecord().isNewRecord()){
+            company  = companyByName;
+        }else {
+            company = Database.getTable(Company.class).newRecord();
+        }
+
+        if (ObjectUtil.isVoid(company.getName())) {
+            if (companyByName != null) {
+                company.setName(companyByName.getName());
             }
+        }
+        if (ObjectUtil.isVoid(company.getDomainName())) {
+            if (companyByEmail != null) {
+                company.setDomainName(companyByEmail.getDomainName());
+            }else if (companyBySubscriberId != null) {
+                company.setDomainName(companyBySubscriberId.getDomainName());
+            }
+        }
+        if (ObjectUtil.isVoid(company.getName())) {
+            company.setName(company.getDomainName());
         }
         company.save();
         return company;

@@ -35,19 +35,19 @@ public interface BecknOrderMeta extends Model {
 
 
     @Index
-    @UNIQUE_KEY("bap_order")
+    @UNIQUE_KEY(value = "bap_order")
     public String getBapOrderId();
     public void setBapOrderId(String eCommerceOrderId);
 
 
     @Index
-    @UNIQUE_KEY("do")
+    @UNIQUE_KEY(value = "do")
     @IS_NULLABLE
     public String getECommerceDraftOrderId();
     public void setECommerceDraftOrderId(String eCommerceDraftOrderId);
 
     @Index
-    @UNIQUE_KEY("eo")
+    @UNIQUE_KEY(value = "eo")
     public String getECommerceOrderId();
     public void setECommerceOrderId(String eCommerceOrderId);
 
@@ -89,6 +89,10 @@ public interface BecknOrderMeta extends Model {
     public String getTrackingUrl();
     public void setTrackingUrl(String trackingUrl);
 
+    @COLUMN_SIZE(2048*4)
+    @IS_NULLABLE
+    public String getRspContextJson();
+    public void setRspContextJson(String rspContextJson);
 
     public List<Settlement>  getSettlements();
 }

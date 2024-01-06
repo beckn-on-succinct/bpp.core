@@ -36,6 +36,14 @@ public class ProviderConfig extends BecknObject {
         super(payload);
     }
 
+    public boolean isTaxIncludedInPrice(){
+        return getBoolean("tax_included_in_price");
+    }
+    public void setTaxIncludedInPrice(boolean tax_included_in_price){
+        set("tax_included_in_price",tax_included_in_price);
+    }
+
+
     public Organization getOrganization(){
         return get(Organization.class, "organization");
     }
