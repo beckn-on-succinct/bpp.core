@@ -1,5 +1,6 @@
 package in.succinct.bpp.core.db.model;
 
+import com.venky.core.util.Bucket;
 import com.venky.geo.GeoCoder;
 import com.venky.geo.GeoCoordinate;
 import com.venky.swf.plugins.collab.db.model.config.PinCode;
@@ -222,6 +223,12 @@ public class ProviderConfig extends BecknObject {
         set("delivery_gst_pct",delivery_gst_pct);
     }
 
+    public String getMetaNamespace(){
+        return get("meta_namespace","ondc");
+    }
+    public void setMetaNamespace(String meta_namespace){
+        set("meta_namespace",meta_namespace);
+    }
 
     public static class IssueTrackerConfig extends BecknObject {
 
@@ -323,48 +330,45 @@ public class ProviderConfig extends BecknObject {
         serviceability.setServiceable(false);
         serviceability.setReason(new DropoffLocationServiceabilityError());
 
-        if (end == null){
-            serviceability.setServiceable(false);
-        }else if (FulfillmentType.store_pickup.matches(inFulfillmentType)) {
-            serviceability.setServiceable(true);
-            serviceability.setCharges(0);
-        }else if (rules == null){
+        if (FulfillmentType.store_pickup.matches(inFulfillmentType) || rules == null || rules.isEmpty()) {
             serviceability.setServiceable(true);
             serviceability.setCharges(0);
         }else {
-            Location endLocation = end.getLocation();
-            if (endLocation != null){
-                GeoCoordinate endGps = endLocation.getGps();
-                if (endGps == null && endLocation.getAddress() != null){
-                    if (endLocation.getAddress().getPinCode() != null){
-                        PinCode pinCode = PinCode.find(endLocation.getAddress().getPinCode());
-                        if (pinCode.getLat() == null){
-                            endGps = new GeoCoordinate(new GeoCoder().getLocation(pinCode.getPinCode() , Config.instance().getGeoProviderParams()));
-                            pinCode.setLat(endGps.getLat());
-                            pinCode.setLng(endGps.getLng());
-                            pinCode.save(); //Lazy save
-                        }else {
-                            endGps = new GeoCoordinate(pinCode.getLat(),pinCode.getLng());
-                        }
-                    }else {
-                        endGps = new GeoCoordinate(new GeoCoder().getLocation(endLocation.getAddress().flatten() , Config.instance().getGeoProviderParams()));
+            Location endLocation = end == null ? null : end.getLocation();
+            GeoCoordinate endGps = endLocation == null ? null : endLocation.getGps() ;
+            if (endGps == null && endLocation != null && endLocation.getAddress() != null){
+                if (endLocation.getAddress().getPinCode() != null) {
+                    PinCode pinCode = PinCode.find(endLocation.getAddress().getPinCode());
+                    if (pinCode.getLat() == null) {
+                        endGps = new GeoCoordinate(new GeoCoder().getLocation(pinCode.getPinCode(), Config.instance().getGeoProviderParams()));
+                        pinCode.setLat(endGps.getLat());
+                        pinCode.setLng(endGps.getLng());
+                        pinCode.save(); //Lazy save
+                    } else {
+                        endGps = new GeoCoordinate(pinCode.getLat(), pinCode.getLng());
                     }
+                } else {
+                    endGps = new GeoCoordinate(new GeoCoder().getLocation(endLocation.getAddress().flatten(), Config.instance().getGeoProviderParams()));
                 }
-                if (endGps != null){
-                    endLocation.setGps(endGps);
-                    GeoCoordinate storeGps = storeLocation.getGps();
-                    double distance = endGps.distanceTo(storeGps);
-                    for (DeliveryRule rule : rules){
-                        if (rule.getMinDistance() <= distance && distance < rule.getMaxDistance() && !rule.isOnActual() && !rule.isDeliveryViaNetwork()){
-                            serviceability.setServiceable(true);
-                            serviceability.setCharges(rule.getFixedRate() + rule.getRatePerKm() * distance);
-                        }
+                endLocation.setGps(endGps);
+            }
+            GeoCoordinate storeGps = storeLocation.getGps();
+            double distance  = endGps == null ? Double.POSITIVE_INFINITY : endGps.distanceTo(storeGps);
+            for (DeliveryRule rule : rules){
+                if (rule.getMinDistance() <= distance && ( distance < rule.getMaxDistance() || rule.getMaxDistance() == 0 ) && !rule.isOnActual() && !rule.isDeliveryViaNetwork()){
+                    serviceability.setServiceable(true);
+                    Bucket charges = new Bucket();
+                    charges.increment(rule.getFixedRate());
+                    if (rule.getRatePerKm() > 0){ // Avoid multiply by infinity!
+                        charges.increment(rule.getRatePerKm() * distance);
                     }
-                    if (!serviceability.isServiceable()){
-                        serviceability.setReason(new DistanceServiceabilityError());
-                    }
+                    serviceability.setCharges(charges.doubleValue());
                 }
             }
+            if (!serviceability.isServiceable()){
+                serviceability.setReason(new DistanceServiceabilityError());
+            }
+
         }
 
         return serviceability;

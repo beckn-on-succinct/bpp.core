@@ -15,6 +15,10 @@ public class BppActionTask extends BppTask {
     NetworkApiAdaptor networkApiAdaptor;
     CommerceAdaptor adaptor ;
 
+    @Override
+    public Priority getTaskPriority() {
+        return Priority.HIGH;
+    }
 
     public BppActionTask(NetworkApiAdaptor apiAdaptor, CommerceAdaptor adaptor, Request request, Map<String, String> headers){
         super(request,headers);

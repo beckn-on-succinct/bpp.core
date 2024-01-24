@@ -23,6 +23,7 @@ import in.succinct.beckn.SellerException.InvalidOrder;
 import in.succinct.beckn.Subscriber;
 import in.succinct.bpp.core.adaptor.CommerceAdaptor;
 import in.succinct.bpp.core.adaptor.NetworkAdaptor;
+import in.succinct.bpp.core.db.model.LocalOrderSynchronizer;
 import in.succinct.bpp.core.db.model.LocalOrderSynchronizerFactory;
 import in.succinct.bpp.core.tasks.BppActionTask;
 import org.json.simple.JSONObject;
@@ -163,6 +164,7 @@ public abstract class NetworkApiAdaptor {
         init(adaptor,request,initReply,true);
 
         initReply.getContext().setAction("confirm");
+        LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(adaptor.getSubscriber()).sync(initReply,getNetworkAdaptor(),false); ///Sync as if incoming
 
         adaptor.confirm(initReply,reply);
     }
