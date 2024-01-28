@@ -2,7 +2,6 @@ package in.succinct.bpp.core.db.model;
 
 import com.venky.core.util.Bucket;
 import com.venky.core.util.ObjectUtil;
-import com.venky.network.Edge;
 import com.venky.swf.db.Database;
 import com.venky.swf.db.JdbcTypeHelper.TypeConverter;
 import com.venky.swf.plugins.background.core.DbTask;
@@ -36,7 +35,6 @@ import in.succinct.beckn.Note;
 import in.succinct.beckn.Note.Notes;
 import in.succinct.beckn.Option;
 import in.succinct.beckn.Order;
-import in.succinct.beckn.Order.OrderReconStatus;
 import in.succinct.beckn.Order.Orders;
 import in.succinct.beckn.Order.ReconStatus;
 import in.succinct.beckn.Order.SettlementReasonCode;
@@ -47,9 +45,7 @@ import in.succinct.beckn.Payment;
 import in.succinct.beckn.Payment.CollectedBy;
 import in.succinct.beckn.Payment.CommissionType;
 import in.succinct.beckn.Payment.PaymentStatus;
-import in.succinct.beckn.Representative;
 import in.succinct.beckn.Representative.Complainant;
-import in.succinct.beckn.Representative.Respondent;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.Role;
 import in.succinct.beckn.SellerException;
@@ -61,17 +57,16 @@ import in.succinct.beckn.SettlementDetail;
 import in.succinct.beckn.SettlementDetails;
 import in.succinct.beckn.Time;
 import in.succinct.bpp.core.adaptor.CommerceAdaptor;
-import in.succinct.bpp.core.adaptor.NetworkAdaptor;
-import in.succinct.bpp.core.adaptor.NetworkAdaptorFactory;
-import in.succinct.bpp.core.adaptor.api.BecknIdHelper;
-import in.succinct.bpp.core.adaptor.api.BecknIdHelper.Entity;
+import in.succinct.bpp.core.adaptor.api.NetworkApiAdaptor;
 import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptor.FulfillmentStatusAudit;
-import in.succinct.bpp.core.adaptor.igm.IssueTracker;
-import in.succinct.bpp.core.adaptor.igm.IssueTrackerFactory;
 import in.succinct.bpp.core.db.model.rsp.BankAccount;
 import in.succinct.bpp.core.db.model.rsp.Correction;
 import in.succinct.bpp.core.db.model.rsp.Settlement;
 import in.succinct.bpp.core.extensions.SuccinctIssueTracker;
+import in.succinct.onet.core.adaptor.NetworkAdaptor;
+import in.succinct.onet.core.adaptor.NetworkAdaptorFactory;
+import in.succinct.onet.core.api.BecknIdHelper;
+import in.succinct.onet.core.api.BecknIdHelper.Entity;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -797,7 +792,7 @@ public class LocalOrderSynchronizer {
 
 
 
-        NetworkAdaptorFactory.getInstance().getAdaptor(orderMeta.getNetworkId()).getApiAdaptor().callback(adaptor,reply);
+        ((NetworkApiAdaptor)NetworkAdaptorFactory.getInstance().getAdaptor(orderMeta.getNetworkId()).getApiAdaptor()).callback(adaptor,reply);
 
         return out;
 

@@ -3,7 +3,6 @@ package in.succinct.bpp.core.extensions;
 import com.venky.core.util.ObjectUtil;
 import com.venky.swf.db.Database;
 import com.venky.swf.db.model.application.Application;
-import com.venky.swf.plugins.attachment.db.model.Attachment;
 import com.venky.swf.plugins.collab.db.model.participants.admin.Company;
 import com.venky.swf.plugins.collab.db.model.user.User;
 import com.venky.swf.plugins.security.db.model.UserRole;
@@ -39,7 +38,6 @@ import in.succinct.beckn.SelectedOdrs;
 import in.succinct.beckn.SelectedOdrs.SelectedOdrsList;
 import in.succinct.beckn.Time;
 import in.succinct.bpp.core.adaptor.CommerceAdaptor;
-import in.succinct.bpp.core.adaptor.NetworkAdaptorFactory;
 import in.succinct.bpp.core.adaptor.igm.IssueTracker;
 import in.succinct.bpp.core.adaptor.igm.IssueTrackerFactory;
 import in.succinct.bpp.core.db.model.ProviderConfig;
@@ -57,9 +55,7 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class SuccinctIssueTracker extends IssueTracker {
     static {

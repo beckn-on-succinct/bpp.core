@@ -5,16 +5,11 @@ import com.venky.swf.db.Database;
 import com.venky.swf.db.JdbcTypeHelper.TypeConverter;
 import com.venky.swf.path._IPath;
 import com.venky.swf.plugins.background.core.TaskManager;
-import com.venky.swf.plugins.beckn.tasks.BecknApiCall;
 import com.venky.swf.routing.Config;
 import in.succinct.beckn.BecknAware;
 import in.succinct.beckn.BecknException;
-import in.succinct.beckn.Cancellation;
-import in.succinct.beckn.Cancellation.CancelledBy;
 import in.succinct.beckn.CancellationReasons.CancellationReasonCode;
 import in.succinct.beckn.Context;
-import in.succinct.beckn.Descriptor;
-import in.succinct.beckn.Option;
 import in.succinct.beckn.Order;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.SellerException;
@@ -22,28 +17,24 @@ import in.succinct.beckn.SellerException.GenericBusinessError;
 import in.succinct.beckn.SellerException.InvalidOrder;
 import in.succinct.beckn.Subscriber;
 import in.succinct.bpp.core.adaptor.CommerceAdaptor;
-import in.succinct.bpp.core.adaptor.NetworkAdaptor;
-import in.succinct.bpp.core.db.model.LocalOrderSynchronizer;
 import in.succinct.bpp.core.db.model.LocalOrderSynchronizerFactory;
 import in.succinct.bpp.core.tasks.BppActionTask;
+import in.succinct.onet.core.adaptor.NetworkAdaptor;
+import in.succinct.onet.core.api.MessageLogger;
+import in.succinct.onet.core.api.MessageLoggerFactory;
 import org.json.simple.JSONObject;
 
 import java.lang.reflect.Method;
-import java.net.URL;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 
-public abstract class NetworkApiAdaptor {
-    private final NetworkAdaptor networkAdaptor ;
+public abstract class NetworkApiAdaptor extends in.succinct.onet.core.adaptor.NetworkApiAdaptor {
     public NetworkApiAdaptor(NetworkAdaptor networkAdaptor) {
-        this.networkAdaptor = networkAdaptor;
+        super(networkAdaptor);
     }
 
-    public NetworkAdaptor getNetworkAdaptor() {
-        return networkAdaptor;
-    }
 
     public void call_by_pass(CommerceAdaptor adaptor, Map<String,String> headers, Request request, Request response){
         try {
@@ -294,15 +285,4 @@ public abstract class NetworkApiAdaptor {
         }, false);
     }
 
-    public void log(String direction,
-                    Request request, Map<String, String> headers, BecknAware response,
-                    String url) {
-        Map<String,String> maskedHeaders = new HashMap<>();
-        headers.forEach((k,v)->{
-            maskedHeaders.put(k, Config.instance().isDevelopmentEnvironment()? v : "***");
-        });
-        Config.instance().getLogger(BppActionTask.class.getName()).log(Level.INFO,String.format("%s|%s|%s|%s|%s",direction,request,headers,response,url));
-        MessageLoggerFactory.getInstance().log(direction,request,headers,response);
-
-    }
 }

@@ -4,8 +4,9 @@ import com.venky.swf.plugins.beckn.tasks.BecknApiCall;
 import com.venky.swf.plugins.beckn.tasks.BppTask;
 import in.succinct.beckn.Request;
 import in.succinct.bpp.core.adaptor.CommerceAdaptor;
-import in.succinct.bpp.core.adaptor.api.MessageLogger;
 import in.succinct.bpp.core.adaptor.api.NetworkApiAdaptor;
+import in.succinct.onet.core.api.MessageLogger;
+
 
 import java.net.URL;
 import java.util.Map;

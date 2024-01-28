@@ -2,7 +2,6 @@ package in.succinct.bpp.core.adaptor.igm;
 
 import in.succinct.beckn.Request;
 import in.succinct.bpp.core.adaptor.CommerceAdaptor;
-import in.succinct.bpp.core.db.model.ProviderConfig.IssueTrackerConfig;
 
 public abstract class IssueTracker {
     CommerceAdaptor adaptor;

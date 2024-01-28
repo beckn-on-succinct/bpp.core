@@ -1,15 +1,12 @@
 package in.succinct.bpp.core.db.model;
 
-import com.venky.swf.db.annotations.column.IS_NULLABLE;
 import com.venky.swf.db.annotations.column.IS_VIRTUAL;
 import com.venky.swf.db.annotations.column.UNIQUE_KEY;
 import com.venky.swf.db.annotations.column.pm.PARTICIPANT;
 import com.venky.swf.db.annotations.column.ui.HIDDEN;
 import com.venky.swf.db.annotations.column.validations.Enumeration;
-import com.venky.swf.db.annotations.model.HAS_DESCRIPTION_FIELD;
 import com.venky.swf.db.model.Model;
 import com.venky.swf.plugins.collab.db.model.user.User;
-import in.succinct.bpp.core.adaptor.NetworkAdaptor.Domains;
 import in.succinct.bpp.core.db.model.igm.config.Application;
 import in.succinct.bpp.core.db.model.igm.config.Channel;
 import in.succinct.bpp.core.db.model.igm.config.Faq;

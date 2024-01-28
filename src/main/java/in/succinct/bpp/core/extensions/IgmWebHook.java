@@ -11,8 +11,9 @@ import in.succinct.beckn.Message;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.Subscriber;
 import in.succinct.bpp.core.adaptor.CommerceAdaptor;
-import in.succinct.bpp.core.adaptor.NetworkAdaptor;
+import in.succinct.bpp.core.adaptor.api.NetworkApiAdaptor;
 import in.succinct.bpp.core.db.model.LocalOrderSynchronizerFactory;
+import in.succinct.onet.core.adaptor.NetworkAdaptor;
 
 import java.util.Date;
 import java.util.UUID;
@@ -32,7 +33,7 @@ public class IgmWebHook implements Extension {
             throw new RuntimeException(ex);
         }
     }
-    public void hook(CommerceAdaptor eCommerceAdaptor,NetworkAdaptor networkAdaptor, Path path) throws Exception{
+    public void hook(CommerceAdaptor eCommerceAdaptor, NetworkAdaptor networkAdaptor, Path path) throws Exception{
         Issue issue = new Issue(StringUtil.read(path.getInputStream()));
         String transactionId = LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(eCommerceAdaptor.getSubscriber()).getTransactionId(issue.getOrder());
 
@@ -68,6 +69,6 @@ public class IgmWebHook implements Extension {
         //Send unsolicited on_status.
         context.setMessageId(UUID.randomUUID().toString());
 
-        networkAdaptor.getApiAdaptor().callback(eCommerceAdaptor,request);
+        ((NetworkApiAdaptor)networkAdaptor.getApiAdaptor()).callback(eCommerceAdaptor,request);
     }
 }
