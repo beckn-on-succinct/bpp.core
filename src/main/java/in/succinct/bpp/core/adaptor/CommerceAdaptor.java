@@ -70,7 +70,7 @@ public abstract class CommerceAdaptor{
             application.setSigningAlgorithm(Request.SIGNATURE_ALGO);
             application.setHashingAlgorithm("BLAKE2B-512");
             application.setSigningAlgorithmCommonName(application.getSigningAlgorithm().toLowerCase());
-            application.setHashingAlgorithmCommonName(application.getHashingAlgorithm().toLowerCase());
+            //application.setHashingAlgorithmCommonName(application.getHashingAlgorithm().toLowerCase());
             application = Database.getTable(Application.class).getRefreshed(application);
             application.save();
         }
@@ -258,7 +258,7 @@ public abstract class CommerceAdaptor{
         application.setSigningAlgorithm(Request.SIGNATURE_ALGO);
         application.setHashingAlgorithm("BLAKE2B-512");
         application.setSigningAlgorithmCommonName(application.getSigningAlgorithm().toLowerCase());
-        application.setHashingAlgorithmCommonName(application.getHashingAlgorithm().toLowerCase());
+        //application.setHashingAlgorithmCommonName(application.getHashingAlgorithm().toLowerCase());
         application.save();
         return application;
     }
