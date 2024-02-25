@@ -103,7 +103,7 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
         provider.getDescriptor().getImages().add(config.getLogo());
 
         provider.setId(getSubscriber().getSubscriberId()); // Provider is same as subscriber.!!
-        provider.setTtl(120);
+        provider.setTtl(2*60*60);
         if (!ObjectUtil.isVoid(config.getFssaiRegistrationNumber())) {
             provider.setFssaiLicenceNo(config.getFssaiRegistrationNumber());
         }
@@ -146,11 +146,14 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
         payment.setCollectedBy(CollectedBy.BAP);
         payments.add(payment);
         if (getProviderConfig().isCodSupported()){
-            payment = new Payment();
-            payment.setId(BecknIdHelper.getBecknId("2",getSubscriber(), Entity.payment));
-            payment.setType(PaymentType.POST_FULFILLMENT);
-            payment.setCollectedBy(CollectedBy.BPP);
-            payments.add(payment);
+            int i = 2;
+            for (PaymentType paymentType : PaymentType.values()){
+                payment = new Payment();
+                payment.setId(BecknIdHelper.getBecknId(String.valueOf(i++),getSubscriber(), Entity.payment));
+                payment.setType(paymentType);
+                payment.setCollectedBy(CollectedBy.BPP);
+                payments.add(payment);
+            }
         }
         return payments;
     }
@@ -159,7 +162,7 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
 
         Map<FulfillmentType, in.succinct.beckn.Fulfillment> map = new HashMap<>();
         for (in.succinct.beckn.Fulfillment f :getFulfillments()) {
-            map.put(f.getType(),f);
+            map.put(    f.getType(),f);
         }
 
 
