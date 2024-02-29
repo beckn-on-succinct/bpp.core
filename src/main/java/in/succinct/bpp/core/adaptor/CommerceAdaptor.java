@@ -155,7 +155,7 @@ public abstract class CommerceAdaptor{
             Option option = new Option();
             option.setDescriptor(new Descriptor());
             option.getDescriptor().setCode(CancellationReasonCode.convertor.toString(cancellationReasonCode));
-            reply.getReturnReasons().add(option);
+            reply.getCancellationReasons().add(option);
         }
     }
 
