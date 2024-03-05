@@ -317,4 +317,10 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
     public void update(Request request, Request reply){
         throw new UpdationNotPossible("Orders cannot be updated. Please cancel and rebook your orders!");
     }
+
+
+    public String getCurrency(){
+        return "INR";
+    }
+
 }
