@@ -52,7 +52,10 @@ public class IgmWebHook implements Extension {
         }else {
             context.setBapId(issue.getRespondent().getSubscriberId());
         }
-        bap = networkAdaptor.lookup(context.getBapId(),true).get(0);
+        bap = networkAdaptor.lookup(new Subscriber(){{
+            setSubscriberId(context.getBapId());
+            setType(Subscriber.SUBSCRIBER_TYPE_BAP);
+        }},true).get(0);
         context.setBapUri(bap.getSubscriberUrl());
         context.setCoreVersion("1.0.0");
         context.setCountry(eCommerceAdaptor.getSubscriber().getCountry());
