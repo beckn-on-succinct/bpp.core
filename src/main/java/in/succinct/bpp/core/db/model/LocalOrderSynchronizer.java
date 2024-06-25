@@ -522,7 +522,7 @@ public class LocalOrderSynchronizer {
 
         double deliveryGST =  providerConfig.isTaxIncludedInPrice() ? (deliveryGstFraction /  (1 + deliveryGstFraction))* deliveryAmount : deliveryGstFraction * deliveryAmount;
 
-        boolean sameState = ObjectUtil.equals(lastKnown.getFulfillment().getStart().getLocation().getAddress().getState(), lastKnown.getFulfillment().getEnd().getLocation().getAddress().getState());
+        boolean sameState = ObjectUtil.equals(lastKnown.getFulfillment().getStart().getLocation().getState(), lastKnown.getFulfillment().getEnd().getLocation().getState());
         Bucket cgst = new Bucket();
         Bucket sgst = new Bucket();
         Bucket igst = new Bucket();
@@ -856,7 +856,7 @@ public class LocalOrderSynchronizer {
         BankAccount account = Database.getTable(BankAccount.class).newRecord();
         Payer payer = order.getPayer();
         account.setAccountNo(payer.getAccountNo());
-        account.setAddress(payer.getAddress());
+        account.setAddress(payer.getAddress().flatten());
         account.setBankCode(payer.getBankCode());
         account.setBankName(payer.getBankName());
         account.setName(payer.getName());

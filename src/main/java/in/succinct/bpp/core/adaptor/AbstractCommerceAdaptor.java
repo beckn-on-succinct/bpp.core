@@ -28,6 +28,7 @@ import in.succinct.beckn.SellerException.InvalidOrder;
 import in.succinct.beckn.SellerException.TrackingNotSupported;
 import in.succinct.beckn.SellerException.UpdationNotPossible;
 import in.succinct.beckn.Tracking;
+import in.succinct.beckn.Tracking.Status;
 import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptor.FulfillmentStatusAudit;
 import in.succinct.bpp.core.db.model.LocalOrderSynchronizerFactory;
 import in.succinct.bpp.core.db.model.ProviderConfig;
@@ -103,7 +104,7 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
         provider.getDescriptor().getImages().add(config.getLogo());
 
         provider.setId(getSubscriber().getSubscriberId()); // Provider is same as subscriber.!!
-        provider.setTtl(2*60*60);
+        provider.setTtl(2L*60L*60L);
         if (!ObjectUtil.isVoid(config.getFssaiRegistrationNumber())) {
             provider.setFssaiLicenceNo(config.getFssaiRegistrationNumber());
         }
@@ -278,7 +279,7 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
             Tracking tracking = new Tracking();
             message.setTracking(tracking);
             tracking.setUrl(trackUrl);
-            tracking.setStatus("active");
+            tracking.setStatus(Status.active);
         }else {
             throw new TrackingNotSupported();
         }

@@ -5,6 +5,7 @@ import com.venky.geo.GeoCoder;
 import com.venky.geo.GeoCoordinate;
 import com.venky.swf.plugins.collab.db.model.config.PinCode;
 import com.venky.swf.routing.Config;
+import in.succinct.beckn.Address;
 import in.succinct.beckn.BecknException;
 import in.succinct.beckn.BecknObject;
 import in.succinct.beckn.BecknObjects;
@@ -337,8 +338,9 @@ public class ProviderConfig extends BecknObject {
             Location endLocation = end == null ? null : end.getLocation();
             GeoCoordinate endGps = endLocation == null ? null : endLocation.getGps() ;
             if (endGps == null && endLocation != null && endLocation.getAddress() != null){
-                if (endLocation.getAddress().getPinCode() != null) {
-                    PinCode pinCode = PinCode.find(endLocation.getAddress().getPinCode());
+                Address a = ((Address)endLocation.getAddress());
+                if (a.getPinCode() != null) {
+                    PinCode pinCode = PinCode.find(a.getPinCode());
                     if (pinCode.getLat() == null) {
                         endGps = new GeoCoordinate(new GeoCoder().getLocation(pinCode.getPinCode(), Config.instance().getGeoProviderParams()));
                         pinCode.setLat(endGps.getLat());
@@ -348,7 +350,7 @@ public class ProviderConfig extends BecknObject {
                         endGps = new GeoCoordinate(pinCode.getLat(), pinCode.getLng());
                     }
                 } else {
-                    endGps = new GeoCoordinate(new GeoCoder().getLocation(endLocation.getAddress().flatten(), Config.instance().getGeoProviderParams()));
+                    endGps = new GeoCoordinate(new GeoCoder().getLocation(a.flatten(), Config.instance().getGeoProviderParams()));
                 }
                 endLocation.setGps(endGps);
             }

@@ -10,7 +10,7 @@ public interface BankAccount extends Model {
     public void setName(String Name);
 
     public String getAddress();
-    public void setAddress(String Address);
+    public void setAddress(String address);
 
     @UNIQUE_KEY(allowMultipleRecordsWithNull = false)
     public String getAccountNo();

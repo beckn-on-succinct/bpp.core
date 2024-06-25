@@ -13,7 +13,7 @@ public class NoteParticipantExtension extends ParticipantExtension<Note> {
         registerExtension(new NoteParticipantExtension());
     }
     @Override
-    protected List<Long> getAllowedFieldValues(User user, Note partiallyFilledModel, String fieldName) {
+    public List<Long> getAllowedFieldValues(User user, Note partiallyFilledModel, String fieldName) {
         if (fieldName.equalsIgnoreCase("LOGGED_BY_REPRESENTOR_ID")){
             Optional<Representative> o = partiallyFilledModel.getIssue().getRepresentors().stream().
                     filter(r-> (r.getUserId() == user.getId())).findAny();

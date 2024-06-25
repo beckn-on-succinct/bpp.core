@@ -14,7 +14,7 @@ public class SubscriberParticipantExtension extends ParticipantExtension<Subscri
         registerExtension(new SubscriberParticipantExtension());
     }
     @Override
-    protected List<Long> getAllowedFieldValues(User user, Subscriber partiallyFilledModel, String fieldName) {
+    public List<Long> getAllowedFieldValues(User user, Subscriber partiallyFilledModel, String fieldName) {
         List<Long> ret = null;
         if ("ANY_USER_ID".equalsIgnoreCase(fieldName)){
             ret = Arrays.asList(user.getId());
