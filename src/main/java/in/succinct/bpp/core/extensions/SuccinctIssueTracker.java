@@ -9,6 +9,7 @@ import com.venky.swf.plugins.security.db.model.UserRole;
 import in.succinct.beckn.Contact;
 import in.succinct.beckn.Context;
 import in.succinct.beckn.Descriptor;
+import in.succinct.beckn.Image;
 import in.succinct.beckn.Images;
 import in.succinct.beckn.Issue.EscalationLevel;
 import in.succinct.beckn.Issue.Status;
@@ -180,9 +181,9 @@ public class SuccinctIssueTracker extends IssueTracker {
                 }
                 dbNote.save();
                 if (note.getDescription().getImages() != null) {
-                    for (String url : note.getDescription().getImages()) {
+                    for (Image image : note.getDescription().getImages()) {
                         NoteAttachment attachment = Database.getTable(NoteAttachment.class).newRecord();
-                        attachment.setUploadUrl(url);
+                        attachment.setUploadUrl(image.getUrl());
                         attachment.setNoteId(dbNote.getId());
                         attachment.save();
                     }

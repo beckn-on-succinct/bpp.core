@@ -22,7 +22,7 @@ import in.succinct.beckn.Context;
 import in.succinct.beckn.Descriptor;
 import in.succinct.beckn.Fulfillment;
 import in.succinct.beckn.Fulfillment.FulfillmentStatus;
-import in.succinct.beckn.Fulfillment.FulfillmentType;
+import in.succinct.beckn.Fulfillment.RetailFulfillmentType;
 import in.succinct.beckn.Intent;
 import in.succinct.beckn.Issue;
 import in.succinct.beckn.Issue.EscalationLevel;
@@ -451,9 +451,9 @@ public class LocalOrderSynchronizer {
 
         if (fulfillment != null && fulfillment.getType() == null) {
             if (fulfillment.getEnd() == null) {
-                fulfillment.setType(FulfillmentType.store_pickup);
+                fulfillment.setType(RetailFulfillmentType.store_pickup.toString());
             } else {
-                fulfillment.setType(FulfillmentType.home_delivery);
+                fulfillment.setType(RetailFulfillmentType.home_delivery.toString());
             }
         }
 

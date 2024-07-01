@@ -6,7 +6,6 @@ import com.venky.swf.db.JdbcTypeHelper.TypeConverter;
 import com.venky.swf.path._IPath;
 import com.venky.swf.plugins.background.core.TaskManager;
 import com.venky.swf.routing.Config;
-import in.succinct.beckn.BecknAware;
 import in.succinct.beckn.BecknException;
 import in.succinct.beckn.CancellationReasons.CancellationReasonCode;
 import in.succinct.beckn.Context;
@@ -21,7 +20,6 @@ import in.succinct.bpp.core.db.model.LocalOrderSynchronizerFactory;
 import in.succinct.bpp.core.tasks.BppActionTask;
 import in.succinct.onet.core.adaptor.NetworkAdaptor;
 import in.succinct.onet.core.api.MessageLogger;
-import in.succinct.onet.core.api.MessageLoggerFactory;
 import org.json.simple.JSONObject;
 
 import java.lang.reflect.Method;
@@ -228,7 +226,7 @@ public abstract class NetworkApiAdaptor extends in.succinct.onet.core.adaptor.Ne
     }
 
     public void get_feedback_categories(CommerceAdaptor adaptor, Request request, Request reply) {
-        adaptor.get_feedback_categories(request,reply);
+        //  adaptor.get_feedback_categories(request,reply);
     }
 
     public void get_feedback_form(CommerceAdaptor adaptor, Request request, Request reply) {

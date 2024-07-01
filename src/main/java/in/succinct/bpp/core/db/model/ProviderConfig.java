@@ -11,7 +11,7 @@ import in.succinct.beckn.BecknObject;
 import in.succinct.beckn.BecknObjects;
 import in.succinct.beckn.Category;
 import in.succinct.beckn.Contact;
-import in.succinct.beckn.Fulfillment.FulfillmentType;
+import in.succinct.beckn.Fulfillment.RetailFulfillmentType;
 import in.succinct.beckn.FulfillmentStop;
 import in.succinct.beckn.Location;
 import in.succinct.beckn.Organization;
@@ -19,7 +19,6 @@ import in.succinct.beckn.SellerException.DistanceServiceabilityError;
 import in.succinct.beckn.SellerException.DropoffLocationServiceabilityError;
 import in.succinct.beckn.SettlementDetail;
 import in.succinct.beckn.Time;
-import in.succinct.bpp.core.adaptor.rsp.ReceiverReconProvider;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
@@ -324,14 +323,14 @@ public class ProviderConfig extends BecknObject {
     }
 
 
-    public Serviceability getServiceability(FulfillmentType inFulfillmentType, FulfillmentStop end, Location storeLocation) {
+    public Serviceability getServiceability(String inFulfillmentType, FulfillmentStop end, Location storeLocation) {
         DeliveryRules rules = getDeliveryRules();
 
         Serviceability serviceability = new Serviceability();
         serviceability.setServiceable(false);
         serviceability.setReason(new DropoffLocationServiceabilityError());
 
-        if (FulfillmentType.store_pickup.matches(inFulfillmentType) || rules == null || rules.isEmpty()) {
+        if (RetailFulfillmentType.store_pickup.matches(RetailFulfillmentType.valueOf(inFulfillmentType)) || rules == null || rules.isEmpty()) {
             serviceability.setServiceable(true);
             serviceability.setCharges(0);
         }else {

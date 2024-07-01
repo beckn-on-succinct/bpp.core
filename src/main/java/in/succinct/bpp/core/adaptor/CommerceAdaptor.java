@@ -14,7 +14,6 @@ import in.succinct.beckn.CancellationReasons;
 import in.succinct.beckn.CancellationReasons.CancellationReasonCode;
 import in.succinct.beckn.Contact;
 import in.succinct.beckn.Descriptor;
-import in.succinct.beckn.FeedbackCategories;
 import in.succinct.beckn.Message;
 import in.succinct.beckn.Option;
 import in.succinct.beckn.Organization;
@@ -173,9 +172,6 @@ public abstract class CommerceAdaptor{
         reply.setRatingCategories(new RatingCategories());
     }
 
-    public void get_feedback_categories(Request request, Request reply) {
-        reply.setFeedbackCategories(new FeedbackCategories());
-    }
 
     public void get_feedback_form(Request request, Request reply) {
     }

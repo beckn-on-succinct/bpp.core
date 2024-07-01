@@ -8,7 +8,7 @@ import in.succinct.beckn.Context;
 import in.succinct.beckn.Descriptor;
 import in.succinct.beckn.Fulfillment;
 import in.succinct.beckn.Fulfillment.FulfillmentStatus;
-import in.succinct.beckn.Fulfillment.FulfillmentType;
+import in.succinct.beckn.Fulfillment.RetailFulfillmentType;
 import in.succinct.beckn.Fulfillments;
 import in.succinct.beckn.Images;
 import in.succinct.beckn.Items;
@@ -18,7 +18,7 @@ import in.succinct.beckn.Message;
 import in.succinct.beckn.Order;
 import in.succinct.beckn.Payment;
 import in.succinct.beckn.Payment.CollectedBy;
-import in.succinct.beckn.Payment.PaymentType;
+import in.succinct.beckn.PaymentType;
 import in.succinct.beckn.Payments;
 import in.succinct.beckn.Provider;
 import in.succinct.beckn.Provider.ServiceablityTags;
@@ -62,7 +62,7 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
 
     protected Fulfillment getStorePickup(){
         Fulfillment cFulfillment = new Fulfillment();
-        cFulfillment.setType(FulfillmentType.store_pickup);
+        cFulfillment.setType(RetailFulfillmentType.store_pickup.toString());
         cFulfillment.setId(BecknIdHelper.getBecknId("1",getSubscriber(), Entity.fulfillment));
         cFulfillment.setContact(getProviderConfig().getSupportContact());
         cFulfillment.setFulfillmentStatus(FulfillmentStatus.Serviceable);
@@ -71,7 +71,7 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
 
     protected Fulfillment getHomeDelivery(){
         Fulfillment cFulfillment = new Fulfillment();
-        cFulfillment.setType(FulfillmentType.home_delivery);
+        cFulfillment.setType(RetailFulfillmentType.home_delivery.toString());
         cFulfillment.setId(BecknIdHelper.getBecknId("2",getSubscriber(), Entity.fulfillment));
         cFulfillment.setContact(getProviderConfig().getSupportContact());
         cFulfillment.setProviderName(getProviderConfig().getFulfillmentProviderName());
@@ -161,9 +161,9 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
     public void fixFulfillment(Context context, Order order){
         LocalOrderSynchronizerFactory.getInstance().getLocalOrderSynchronizer(getSubscriber()).fixFulfillment(context,order);
 
-        Map<FulfillmentType, in.succinct.beckn.Fulfillment> map = new HashMap<>();
+        Map<String, in.succinct.beckn.Fulfillment> map = new HashMap<>();
         for (in.succinct.beckn.Fulfillment f :getFulfillments()) {
-            map.put(    f.getType(),f);
+            map.put( f.getType(),f);
         }
 
 
@@ -171,15 +171,15 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
         Fulfillment fulfillment = order.getFulfillment();
 
         if (fulfillment == null) {
-            fulfillment = map.get(FulfillmentType.store_pickup);
+            fulfillment = map.get(RetailFulfillmentType.store_pickup.toString());
             order.setFulfillment(fulfillment);
         }
 
         if (fulfillment != null && fulfillment.getType() == null){
-            if (fulfillment.getEnd() == null && map.containsKey(FulfillmentType.store_pickup)) {
-                fulfillment.setType(FulfillmentType.store_pickup);
-            }else if (map.containsKey(FulfillmentType.home_delivery)){
-                fulfillment.setType(FulfillmentType.home_delivery);
+            if (fulfillment.getEnd() == null && map.containsKey(RetailFulfillmentType.store_pickup.toString())) {
+                fulfillment.setType(RetailFulfillmentType.store_pickup.toString());
+            }else if (map.containsKey(RetailFulfillmentType.home_delivery.toString())){
+                fulfillment.setType(RetailFulfillmentType.home_delivery.toString());
             }else {
                 fulfillment = null;
                 order.setFulfillment(null);
