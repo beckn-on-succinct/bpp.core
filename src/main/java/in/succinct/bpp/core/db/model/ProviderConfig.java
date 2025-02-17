@@ -341,7 +341,7 @@ public class ProviderConfig extends BecknObject {
                 if (a.getPinCode() != null) {
                     PinCode pinCode = PinCode.find(a.getPinCode());
                     if (pinCode.getLat() == null) {
-                        endGps = new GeoCoordinate(new GeoCoder().getLocation(pinCode.getPinCode(), Config.instance().getGeoProviderParams()));
+                        endGps = new GeoCoordinate(GeoCoder.getInstance().getLocation(pinCode.getPinCode(), Config.instance().getGeoProviderParams()));
                         pinCode.setLat(endGps.getLat());
                         pinCode.setLng(endGps.getLng());
                         pinCode.save(); //Lazy save
@@ -349,7 +349,7 @@ public class ProviderConfig extends BecknObject {
                         endGps = new GeoCoordinate(pinCode.getLat(), pinCode.getLng());
                     }
                 } else {
-                    endGps = new GeoCoordinate(new GeoCoder().getLocation(a.flatten(), Config.instance().getGeoProviderParams()));
+                    endGps = new GeoCoordinate(GeoCoder.getInstance().getLocation(a.flatten(), Config.instance().getGeoProviderParams()));
                 }
                 endLocation.setGps(endGps);
             }
