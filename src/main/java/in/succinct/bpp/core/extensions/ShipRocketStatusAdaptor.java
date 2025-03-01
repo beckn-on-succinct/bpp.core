@@ -36,12 +36,12 @@ public class ShipRocketStatusAdaptor extends FulfillmentStatusAdaptor {
         return authHeaders;
     }
     Map<Integer,FulfillmentStatus> fulfillmentStatusMap = new HashMap<>(){{
-        put(9,FulfillmentStatus.Pending);
-        put(19,FulfillmentStatus.Packed);
-        put(42,FulfillmentStatus.Order_picked_up);
-        put(18,FulfillmentStatus.Order_picked_up);
-        put(17,FulfillmentStatus.Out_for_delivery);
-        put(7,FulfillmentStatus.Order_delivered);
+        put(9,FulfillmentStatus.Preparing);
+        put(19,FulfillmentStatus.Prepared);
+        put(42,FulfillmentStatus.In_Transit);
+        put(18,FulfillmentStatus.In_Transit);
+        put(17,FulfillmentStatus.In_Transit);
+        put(7,FulfillmentStatus.Completed);
 
     }};
 

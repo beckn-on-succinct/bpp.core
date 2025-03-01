@@ -1,6 +1,8 @@
 package in.succinct.bpp.core.db.model;
 
 import com.venky.swf.db.annotations.column.COLUMN_DEF;
+import com.venky.swf.db.annotations.column.COLUMN_SIZE;
+import com.venky.swf.db.annotations.column.IS_NULLABLE;
 import com.venky.swf.db.annotations.column.UNIQUE_KEY;
 import com.venky.swf.db.annotations.column.defaulting.StandardDefault;
 import com.venky.swf.db.annotations.column.validations.Enumeration;
@@ -21,16 +23,14 @@ public interface BuyerAppFees extends Model {
 
     public String getSearchTransactionId();
     public void setSearchTransactionId(String searchTransactionId);
+    
+    @COLUMN_SIZE(1024)
+    @IS_NULLABLE
+    String getFinderFeeJson();
+    void setFinderFeeJson(String finderFeeJson);
 
-
-
-    @COLUMN_DEF(StandardDefault.ZERO)
-    public double getBuyerAppFinderFeeAmount();
-    public void setBuyerAppFinderFeeAmount(double buyerAppFinderFeeAmount);
-
-    @Enumeration(enumClass = "in.succinct.beckn.Payment$CommissionType")
-    public String getBuyerAppFinderFeeType();
-    public void setBuyerAppFinderFeeType(String buyerAppFinderFeeType);
-
-
+    
+    
+    
+    
 }

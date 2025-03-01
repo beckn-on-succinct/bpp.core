@@ -6,6 +6,7 @@ import com.venky.geo.GeoCoordinate;
 import com.venky.swf.plugins.collab.db.model.config.PinCode;
 import com.venky.swf.routing.Config;
 import in.succinct.beckn.Address;
+import in.succinct.beckn.BankAccount;
 import in.succinct.beckn.BecknException;
 import in.succinct.beckn.BecknObject;
 import in.succinct.beckn.BecknObjects;
@@ -17,7 +18,6 @@ import in.succinct.beckn.Location;
 import in.succinct.beckn.Organization;
 import in.succinct.beckn.SellerException.DistanceServiceabilityError;
 import in.succinct.beckn.SellerException.DropoffLocationServiceabilityError;
-import in.succinct.beckn.SettlementDetail;
 import in.succinct.beckn.Time;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -75,12 +75,6 @@ public class ProviderConfig extends BecknObject {
         set("category",category);
     }
 
-    public SettlementDetail getSettlementDetail(){
-        return get(SettlementDetail.class, "settlement_detail");
-    }
-    public void setSettlementDetail(SettlementDetail settlement_detail){
-        set("settlement_detail",settlement_detail);
-    }
 
 
     public double getMaxWriteOffAmountToAvoidRTO(){
@@ -183,9 +177,6 @@ public class ProviderConfig extends BecknObject {
         return get(RatingCollectorConfig.class,"rating_collector_config");
     }
 
-    public ReceiverReconProviderConfig getReceiverReconProviderConfig(){
-        return get(ReceiverReconProviderConfig.class, "receiver_recon_provider_config");
-    }
 
 
 
@@ -281,14 +272,6 @@ public class ProviderConfig extends BecknObject {
 
 
     public static class RatingCollectorConfig extends BecknObject {
-        public String getName(){
-            return get("name");
-        }
-        public void setName(String name){
-            set("name",name);
-        }
-    }
-    public static class ReceiverReconProviderConfig extends BecknObject{
         public String getName(){
             return get("name");
         }
@@ -533,4 +516,10 @@ public class ProviderConfig extends BecknObject {
         set("logo",logo);
     }
 
+    public BankAccount getBankAccount(){
+        return get(BankAccount.class, "bank_account");
+    }
+    public void setBankAccount(BankAccount bank_account){
+        set("bank_account",bank_account);
+    }
 }

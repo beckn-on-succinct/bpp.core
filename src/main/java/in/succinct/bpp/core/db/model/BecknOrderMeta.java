@@ -61,15 +61,11 @@ public interface BecknOrderMeta extends Model {
     @IS_NULLABLE
     public String getContextJson();
     public void setContextJson(String contextJson);
-
-    @COLUMN_DEF(StandardDefault.ZERO)
-    public double getBuyerAppFinderFeeAmount();
-    public void setBuyerAppFinderFeeAmount(double buyerAppFinderFeeAmount);
-
-    @Enumeration(enumClass = "in.succinct.beckn.Payment$CommissionType")
+    
+    @COLUMN_SIZE(1024)
     @IS_NULLABLE
-    public String getBuyerAppFinderFeeType();
-    public void setBuyerAppFinderFeeType(String buyerAppFinderFeeType);
+    String getFinderFeeJson();
+    void setFinderFeeJson(String finderFeeJson);
 
     @COLUMN_SIZE(2048*4)
     @IS_NULLABLE

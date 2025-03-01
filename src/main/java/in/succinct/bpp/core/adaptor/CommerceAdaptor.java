@@ -28,8 +28,6 @@ import in.succinct.bpp.core.adaptor.igm.IssueTracker;
 import in.succinct.bpp.core.adaptor.igm.IssueTrackerFactory;
 import in.succinct.bpp.core.adaptor.rating.RatingCollector;
 import in.succinct.bpp.core.adaptor.rating.RatingCollectorFactory;
-import in.succinct.bpp.core.adaptor.rsp.ReceiverReconProvider;
-import in.succinct.bpp.core.adaptor.rsp.ReceiverReconProviderFactory;
 import in.succinct.bpp.core.db.model.ProviderConfig;
 
 import java.sql.Date;
@@ -44,7 +42,6 @@ public abstract class CommerceAdaptor{
     private final FulfillmentStatusAdaptor fulfillmentStatusAdaptor ;
     private final IssueTracker issueTracker;
     private final RatingCollector ratingCollector;
-    private final ReceiverReconProvider receiverReconProvider;
 
     public CommerceAdaptor(Map<String,String> configuration, Subscriber subscriber) {
         this.configuration = configuration;
@@ -55,7 +52,6 @@ public abstract class CommerceAdaptor{
         this.fulfillmentStatusAdaptor = FulfillmentStatusAdaptorFactory.getInstance().createAdaptor(this);
         this.issueTracker = providerConfig.getIssueTrackerConfig() == null ? null : IssueTrackerFactory.getInstance().createIssueTracker(this);
         this.ratingCollector = providerConfig.getRatingCollectorConfig() == null ? null : RatingCollectorFactory.getInstance().createRatingCollector(this);
-        this.receiverReconProvider = providerConfig.getReceiverReconProviderConfig() == null ? null : ReceiverReconProviderFactory.getInstance().createReceiverReconProvider(this);
         this.application = getApplication(getSubscriber().getAppId());
     }
     public Application getApplication(String appId){
@@ -68,8 +64,6 @@ public abstract class CommerceAdaptor{
             application.setSignatureLifeMillis(5000);
             application.setSigningAlgorithm(Request.SIGNATURE_ALGO);
             application.setHashingAlgorithm("BLAKE2B-512");
-            //application.setSigningAlgorithmCommonName(application.getSigningAlgorithm().toLowerCase());
-            //application.setHashingAlgorithmCommonName(application.getHashingAlgorithm().toLowerCase());
             application = Database.getTable(Application.class).getRefreshed(application);
             application.save();
         }
@@ -99,9 +93,6 @@ public abstract class CommerceAdaptor{
 
     public IssueTracker getIssueTracker() {
         return issueTracker;
-    }
-    public ReceiverReconProvider getReceiverReconProvider(){
-        return receiverReconProvider;
     }
 
     public RatingCollector getRatingCollector() {
@@ -267,9 +258,6 @@ public abstract class CommerceAdaptor{
     public void issue_status(Request request,Request reply){
         IssueTracker tracker = getIssueTracker();
         tracker.status(request,reply);
-    }
-    public void receiver_recon(Request request ,Request reply){
-        getReceiverReconProvider().receiver_recon(request,reply);
     }
 
 }

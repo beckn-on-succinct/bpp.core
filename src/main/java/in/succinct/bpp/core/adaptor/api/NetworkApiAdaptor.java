@@ -50,12 +50,7 @@ public abstract class NetworkApiAdaptor extends in.succinct.onet.core.adaptor.Ne
             response.getContext().setBppUri(adaptor.getSubscriber().getSubscriberUrl());
 
             log(MessageLogger.TO_APP,request,headers,response,"/" + request.getContext().getAction());
-
-            /*
-            if (!response.isSuppressed()) {
-                log("FromNetwork->ToNetwork", request, headers, response, "/" + request.getContext().getAction());
-            }*/
-
+            
         }catch (BecknException ex){
             throw ex;
         }catch (Exception ex){
@@ -205,10 +200,7 @@ public abstract class NetworkApiAdaptor extends in.succinct.onet.core.adaptor.Ne
         adaptor.issue_status(request,reply);
     }
 
-    public void receiver_recon(CommerceAdaptor adaptor, Request request, Request reply){
-        adaptor.receiver_recon(request,reply);
-    }
-
+    
     public void support(CommerceAdaptor adaptor, Request request, Request reply) {
         adaptor.support(request,reply);
     }

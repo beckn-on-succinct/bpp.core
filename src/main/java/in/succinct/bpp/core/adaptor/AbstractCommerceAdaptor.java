@@ -18,7 +18,6 @@ import in.succinct.beckn.Message;
 import in.succinct.beckn.Order;
 import in.succinct.beckn.Payment;
 import in.succinct.beckn.Payment.CollectedBy;
-import in.succinct.beckn.PaymentType;
 import in.succinct.beckn.Payments;
 import in.succinct.beckn.Provider;
 import in.succinct.beckn.Provider.ServiceablityTags;
@@ -143,15 +142,15 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
         Payments payments = new Payments();
         Payment payment = new Payment();
         payment.setId(BecknIdHelper.getBecknId("1",getSubscriber(), Entity.payment));
-        payment.setType(PaymentType.ON_ORDER);
+        payment.setPaymentType(Payment.ON_ORDER);
         payment.setCollectedBy(CollectedBy.BAP);
         payments.add(payment);
         if (getProviderConfig().isCodSupported()){
             int i = 2;
-            for (PaymentType paymentType : PaymentType.values()){
+            for (String paymentType : new String[]{Payment.ON_ORDER,Payment.POST_FULFILLMENT,Payment.PRE_FULFILLMENT,Payment.ON_FULFILLMENT}){
                 payment = new Payment();
                 payment.setId(BecknIdHelper.getBecknId(String.valueOf(i++),getSubscriber(), Entity.payment));
-                payment.setType(paymentType);
+                payment.setPaymentType(paymentType);
                 payment.setCollectedBy(CollectedBy.BPP);
                 payments.add(payment);
             }
@@ -176,7 +175,7 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
         }
 
         if (fulfillment != null && fulfillment.getType() == null){
-            if (fulfillment.getEnd() == null && map.containsKey(RetailFulfillmentType.store_pickup.toString())) {
+            if (fulfillment._getEnd() == null && map.containsKey(RetailFulfillmentType.store_pickup.toString())) {
                 fulfillment.setType(RetailFulfillmentType.store_pickup.toString());
             }else if (map.containsKey(RetailFulfillmentType.home_delivery.toString())){
                 fulfillment.setType(RetailFulfillmentType.home_delivery.toString());
