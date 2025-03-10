@@ -91,11 +91,6 @@ public abstract class NetworkApiAdaptor extends in.succinct.onet.core.adaptor.Ne
 
             response.update(internalResponse);
 
-            /*
-            if (!response.isSuppressed()) {
-                log("FromNetwork->ToNetwork", request, headers, response, "/" + request.getContext().getAction());
-            }
-             */
 
         }catch (BecknException ex){
             throw ex;

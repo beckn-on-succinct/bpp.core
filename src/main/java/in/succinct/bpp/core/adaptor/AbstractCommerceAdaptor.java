@@ -28,7 +28,6 @@ import in.succinct.beckn.SellerException.TrackingNotSupported;
 import in.succinct.beckn.SellerException.UpdationNotPossible;
 import in.succinct.beckn.Tracking;
 import in.succinct.beckn.Tracking.Status;
-import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptor.FulfillmentStatusAudit;
 import in.succinct.bpp.core.db.model.LocalOrderSynchronizerFactory;
 import in.succinct.bpp.core.db.model.ProviderConfig;
 import in.succinct.bpp.core.db.model.ProviderConfig.DeliveryRules;
@@ -37,7 +36,6 @@ import in.succinct.onet.core.api.BecknIdHelper.Entity;
 import org.json.simple.JSONArray;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements ItemFetcher{
@@ -225,7 +223,6 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
     public abstract Order getStatus(Order order);
     public abstract Order cancel(Order order) ;
     public abstract String getTrackingUrl(Order order) ;
-    public abstract List<FulfillmentStatusAudit> getStatusAudit (Order order);
 
 
     public void _search(Request reply) {

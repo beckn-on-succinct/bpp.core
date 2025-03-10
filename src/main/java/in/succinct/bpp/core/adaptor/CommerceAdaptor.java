@@ -22,8 +22,6 @@ import in.succinct.beckn.Request;
 import in.succinct.beckn.ReturnReasons;
 import in.succinct.beckn.ReturnReasons.ReturnReasonCode;
 import in.succinct.beckn.User;
-import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptor;
-import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptorFactory;
 import in.succinct.bpp.core.adaptor.igm.IssueTracker;
 import in.succinct.bpp.core.adaptor.igm.IssueTrackerFactory;
 import in.succinct.bpp.core.adaptor.rating.RatingCollector;
@@ -39,7 +37,6 @@ public abstract class CommerceAdaptor{
     private final Map<String,String> configuration;
     private final Application application ;
     private final ProviderConfig providerConfig;
-    private final FulfillmentStatusAdaptor fulfillmentStatusAdaptor ;
     private final IssueTracker issueTracker;
     private final RatingCollector ratingCollector;
 
@@ -49,7 +46,6 @@ public abstract class CommerceAdaptor{
         String key = configuration.keySet().stream().filter(k->k.endsWith(".provider.config")).findAny().get();
         this.providerConfig = new ProviderConfig(this.configuration.get(key));
         this.subscriber.setOrganization(providerConfig.getOrganization());
-        this.fulfillmentStatusAdaptor = FulfillmentStatusAdaptorFactory.getInstance().createAdaptor(this);
         this.issueTracker = providerConfig.getIssueTrackerConfig() == null ? null : IssueTrackerFactory.getInstance().createIssueTracker(this);
         this.ratingCollector = providerConfig.getRatingCollectorConfig() == null ? null : RatingCollectorFactory.getInstance().createRatingCollector(this);
         this.application = getApplication(getSubscriber().getAppId());
@@ -99,9 +95,6 @@ public abstract class CommerceAdaptor{
         return ratingCollector;
     }
 
-    public FulfillmentStatusAdaptor getFulfillmentStatusAdaptor() {
-        return fulfillmentStatusAdaptor;
-    }
 
     public ProviderConfig getProviderConfig() {
         return providerConfig;

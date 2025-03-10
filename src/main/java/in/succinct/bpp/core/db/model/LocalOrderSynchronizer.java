@@ -32,7 +32,6 @@ import in.succinct.beckn.SellerException;
 import in.succinct.beckn.SellerException.GenericBusinessError;
 import in.succinct.beckn.SellerException.InvalidOrder;
 import in.succinct.beckn.SellerException.InvalidRequestError;
-import in.succinct.bpp.core.adaptor.fulfillment.FulfillmentStatusAdaptor.FulfillmentStatusAudit;
 import in.succinct.onet.core.adaptor.NetworkAdaptor;
 import in.succinct.onet.core.api.BecknIdHelper;
 import in.succinct.onet.core.api.BecknIdHelper.Entity;
@@ -428,9 +427,6 @@ public class LocalOrderSynchronizer {
         }
     }
 
-    public List<FulfillmentStatusAudit> getFulfillmentStatusAudit(String transactionId) {
-        return getOrderMeta(transactionId).getStatusAudits();
-    }
     public boolean hasOrderReached(String transactionId, Status status){
         return getOrderMeta(transactionId).getStatusReachedAt(status) != null;
     }

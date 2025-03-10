@@ -236,7 +236,7 @@ public class SuccinctIssueTracker extends IssueTracker {
         selfRepresentative.setFaqUrl(selfOrg.getFaqUrl());
 
         BankAccount bankAccount = Database.getTable(BankAccount.class).newRecord();
-        bankAccount.setName(providerConfig.getOrganization().getName());
+        bankAccount.setAccountHolderName(providerConfig.getOrganization().getName());
         bankAccount.setVirtualPaymentAddress(providerConfig.getBankAccount().getVirtualPaymentAddress());
         bankAccount = Database.getTable(BankAccount.class).getRefreshed(bankAccount);
         bankAccount.save();

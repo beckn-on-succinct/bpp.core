@@ -2,7 +2,7 @@ package in.succinct.bpp.core.adaptor;
 
 import com.venky.core.util.ObjectHolder;
 import com.venky.extension.Registry;
-import com.venky.swf.plugins.beckn.messaging.Subscriber;
+import in.succinct.beckn.Subscriber;
 
 
 import java.util.Map;
