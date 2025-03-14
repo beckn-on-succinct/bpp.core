@@ -522,4 +522,12 @@ public class ProviderConfig extends BecknObject {
     public void setBankAccount(BankAccount bank_account){
         set("bank_account",bank_account);
     }
+    
+    public String getUrl(){
+        return get("url");
+    }
+    public void setUrl(String url){
+        set("url",url);
+    }
+    
 }
