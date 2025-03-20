@@ -31,6 +31,7 @@ import in.succinct.bpp.core.db.model.ProviderConfig;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.Map;
+import java.util.Optional;
 
 public abstract class CommerceAdaptor{
     private final Subscriber subscriber;
@@ -43,8 +44,9 @@ public abstract class CommerceAdaptor{
     public CommerceAdaptor(Map<String,String> configuration, Subscriber subscriber) {
         this.configuration = configuration;
         this.subscriber = subscriber;
-        String key = configuration.keySet().stream().filter(k->k.endsWith(".provider.config")).findAny().get();
-        this.providerConfig = new ProviderConfig(this.configuration.get(key));
+        Optional<String> key = configuration.keySet().stream().filter(k->k.endsWith(".provider.config")).findAny();
+        
+        this.providerConfig = new ProviderConfig(key.orElse("{}"));
         this.subscriber.setOrganization(providerConfig.getOrganization());
         this.issueTracker = providerConfig.getIssueTrackerConfig() == null ? null : IssueTrackerFactory.getInstance().createIssueTracker(this);
         this.ratingCollector = providerConfig.getRatingCollectorConfig() == null ? null : RatingCollectorFactory.getInstance().createRatingCollector(this);
