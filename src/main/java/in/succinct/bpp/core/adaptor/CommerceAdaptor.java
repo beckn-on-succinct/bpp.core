@@ -45,8 +45,7 @@ public abstract class CommerceAdaptor{
         this.configuration = configuration;
         this.subscriber = subscriber;
         Optional<String> key = configuration.keySet().stream().filter(k->k.endsWith(".provider.config")).findAny();
-        
-        this.providerConfig = new ProviderConfig(key.orElse("{}"));
+        this.providerConfig = key.map(s -> new ProviderConfig(configuration.get(s))).orElseGet(ProviderConfig::new);
         this.subscriber.setOrganization(providerConfig.getOrganization());
         this.issueTracker = providerConfig.getIssueTrackerConfig() == null ? null : IssueTrackerFactory.getInstance().createIssueTracker(this);
         this.ratingCollector = providerConfig.getRatingCollectorConfig() == null ? null : RatingCollectorFactory.getInstance().createRatingCollector(this);
