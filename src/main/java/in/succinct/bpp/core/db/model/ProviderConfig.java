@@ -10,6 +10,7 @@ import in.succinct.beckn.BankAccount;
 import in.succinct.beckn.BecknException;
 import in.succinct.beckn.BecknObject;
 import in.succinct.beckn.BecknObjects;
+import in.succinct.beckn.BecknStrings;
 import in.succinct.beckn.Category;
 import in.succinct.beckn.Contact;
 import in.succinct.beckn.Fulfillment.RetailFulfillmentType;
@@ -19,6 +20,7 @@ import in.succinct.beckn.Organization;
 import in.succinct.beckn.SellerException.DistanceServiceabilityError;
 import in.succinct.beckn.SellerException.DropoffLocationServiceabilityError;
 import in.succinct.beckn.Time;
+import in.succinct.onet.core.adaptor.NetworkAdaptor.DomainCategory;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
@@ -521,6 +523,15 @@ public class ProviderConfig extends BecknObject {
     }
     public void setBankAccount(BankAccount bank_account){
         set("bank_account",bank_account);
+    }
+    
+    
+    
+    public DomainCategory getDomainCategory(){
+        return getEnum(DomainCategory.class, "domain_category");
+    }
+    public void setDomainCategory(DomainCategory domain_category){
+        setEnum("domain_category",domain_category);
     }
     
 }
