@@ -7,7 +7,6 @@ import in.succinct.bpp.core.adaptor.CommerceAdaptor;
 import in.succinct.bpp.core.adaptor.api.NetworkApiAdaptor;
 import in.succinct.onet.core.api.MessageLogger;
 
-
 import java.net.URL;
 import java.util.Map;
 
@@ -63,7 +62,7 @@ public class BppActionTask extends BppTask {
 
     @Override
     protected void sendError(Throwable th) {
-        String domain = adaptor.getSubscriber().getDomain();
+        String domain = getRequest().getContext().getDomain();
         super.sendError(th,networkApiAdaptor.getNetworkAdaptor().getDomains().get(domain).getSchemaURL());
     }
 
