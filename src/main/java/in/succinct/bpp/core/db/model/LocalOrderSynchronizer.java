@@ -32,6 +32,7 @@ import in.succinct.beckn.SellerException;
 import in.succinct.beckn.SellerException.GenericBusinessError;
 import in.succinct.beckn.SellerException.InvalidOrder;
 import in.succinct.beckn.SellerException.InvalidRequestError;
+import in.succinct.beckn.Tracking;
 import in.succinct.onet.core.adaptor.NetworkAdaptor;
 import in.succinct.onet.core.api.BecknIdHelper;
 import in.succinct.onet.core.api.BecknIdHelper.Entity;
@@ -250,6 +251,7 @@ public class LocalOrderSynchronizer {
             }
         } else {
             Order order = request.getMessage().getOrder();
+            Tracking tracking = request.getMessage().getTracking();
             if (order == null && !ObjectUtil.isVoid(request.getMessage().getOrderId())) {
                 order = new Order();
                 order.setId(request.getMessage().getOrderId());
@@ -320,7 +322,18 @@ public class LocalOrderSynchronizer {
                             order.setId(BecknIdHelper.getBecknId(meta.getECommerceOrderId(), subscriber, Entity.order));
                             meta.setBapOrderId(order.getId());
                         }
+                    }else {
+                        if (ObjectUtil.isVoid(meta.getECommerceOrderId()) && ObjectUtil.equals(action,"on_confirm")){
+                            meta.setECommerceOrderId(order.getId());
+                            meta.setBapOrderId(order.getId());
+                        }
                     }
+                    if (tracking != null){
+                        if (ObjectUtil.isVoid(meta.getTrackingUrl())){
+                            meta.setTrackingUrl(tracking.getUrl());
+                        }
+                    }
+                    
                     Payments payments = order.getPayments();
                     Payment payment = payments == null || payments.isEmpty() ? null : payments.get(0);
                     if (payment != null && meta.getFinderFeeJson() != null) {
