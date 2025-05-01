@@ -271,7 +271,11 @@ public class LocalOrderSynchronizer {
                                 order.getCancellation().setCancelledBy(CancelledBy.BUYER);
                             }
                         }
-                        if (lastKnown.getFulfillment().getFulfillmentStatus().compareTo(FulfillmentStatus.In_Transit) >= 0){
+                        if (lastKnown.getStatus() != null && lastKnown.getStatus().compareTo(Status.In_Transit) >= 0){
+                            throw new SellerException.CancellationNotPossible("Order already closed!");
+                        }
+                        if (lastKnown.getFulfillment() != null && lastKnown.getFulfillment().getFulfillmentStatus() != null &&
+                                lastKnown.getFulfillment().getFulfillmentStatus().compareTo(FulfillmentStatus.In_Transit) >= 0){
                             throw new SellerException.CancellationNotPossible("Order already closed!");
                         }
                     }
