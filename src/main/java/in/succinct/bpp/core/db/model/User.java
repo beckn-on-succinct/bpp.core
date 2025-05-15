@@ -2,7 +2,10 @@ package in.succinct.bpp.core.db.model;
 
 import com.venky.swf.db.Database;
 import com.venky.swf.db.annotations.column.IS_NULLABLE;
+import com.venky.swf.db.annotations.column.IS_VIRTUAL;
 import com.venky.swf.db.annotations.column.UNIQUE_KEY;
+
+import java.util.List;
 
 public interface User extends com.venky.swf.plugins.collab.db.model.user.User {
     @IS_NULLABLE
@@ -17,7 +20,10 @@ public interface User extends com.venky.swf.plugins.collab.db.model.user.User {
         return user;
     }
     
+    @IS_VIRTUAL
     String getCredentialJson();
-    void setCredentialJson(String credentialJson);
+    
+    
+    List<AdaptorCredential> getAdaptorCredentials();
     
 }
