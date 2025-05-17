@@ -84,7 +84,8 @@ public abstract class CommerceAdaptor{
     protected boolean isUserCredentialsAvailable(in.succinct.bpp.core.db.model.User user){
         if (isAdaptorEnabled(user)){
             JSONObject creds = JSONAwareWrapper.parse(user.getCredentialJson());
-            return !creds.isEmpty() && creds.keySet().containsAll(getCredentialAttributes());
+            
+            return !creds.isEmpty() && getCredentialAttributes().stream().noneMatch(attr -> ObjectUtil.isVoid(creds.get(attr)));
         }
         return false;
     }
