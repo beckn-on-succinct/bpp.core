@@ -14,6 +14,8 @@ import in.succinct.beckn.CancellationReasons;
 import in.succinct.beckn.CancellationReasons.CancellationReasonCode;
 import in.succinct.beckn.Contact;
 import in.succinct.beckn.Descriptor;
+import in.succinct.beckn.FulfillmentStop;
+import in.succinct.beckn.Intent;
 import in.succinct.beckn.Message;
 import in.succinct.beckn.Option;
 import in.succinct.beckn.Organization;
@@ -27,6 +29,8 @@ import in.succinct.bpp.core.adaptor.igm.IssueTrackerFactory;
 import in.succinct.bpp.core.adaptor.rating.RatingCollector;
 import in.succinct.bpp.core.adaptor.rating.RatingCollectorFactory;
 import in.succinct.bpp.core.db.model.ProviderConfig;
+import in.succinct.json.JSONAwareWrapper;
+import org.json.simple.JSONObject;
 
 import java.sql.Date;
 import java.sql.Timestamp;
@@ -40,6 +44,46 @@ public abstract class CommerceAdaptor{
     private final ProviderConfig providerConfig;
     private final IssueTracker issueTracker;
     private final RatingCollector ratingCollector;
+    
+    protected in.succinct.bpp.core.db.model.User getUser(Request request) {
+        String action = request.getContext().getAction();
+        in.succinct.bpp.core.db.model.User user = null;
+        if (ObjectUtil.equals(action, "search")) {
+            Intent intent = request.getMessage().getIntent();
+            FulfillmentStop fulfillmentStop = intent.getFulfillment()._getStart();
+            if (fulfillmentStop != null) {
+                String token = fulfillmentStop.getAuthorization().getToken();
+                String type = fulfillmentStop.getAuthorization().getType();
+                if (ObjectUtil.equals(type, "customer")) {
+                    user = in.succinct.bpp.core.db.model.User.findProvider(token);
+                }
+            }
+        }
+        
+        if (!isUserCredentialsAvailable(user)) {
+            //Does user want to use this carrier.
+            if (isAdaptorEnabled(user)) {
+                JSONObject headers = request.getExtendedAttributes().get("headers");
+                if (headers.containsKey("USER.ID")) {
+                    long userId = Long.parseLong((String) headers.get("USER.ID"));
+                    user = Database.getTable(in.succinct.bpp.core.db.model.User.class).get(userId);
+                }
+            }
+        }
+        if (!isUserCredentialsAvailable(user)){
+            user = null;
+        }
+        return user;
+    }
+    
+    protected boolean isAdaptorEnabled(in.succinct.bpp.core.db.model.User user){
+        return  user != null && !ObjectUtil.isVoid(user.getCredentialJson() );
+    }
+    protected boolean isUserCredentialsAvailable(in.succinct.bpp.core.db.model.User user){
+        return isAdaptorEnabled(user) &&
+                !((JSONObject) JSONAwareWrapper.parse(user.getCredentialJson())).isEmpty();
+    }
+    
 
     public CommerceAdaptor(Map<String,String> configuration, Subscriber subscriber) {
         this.configuration = configuration;

@@ -18,9 +18,12 @@ public class UserImpl extends ModelImpl<User> {
         adaptorCredential.setAdaptorName(adaptorName);
         adaptorCredential.setUserId(getProxy().getId());
         adaptorCredential = Database.getTable(AdaptorCredential.class).getRefreshed(adaptorCredential);
-        if (ObjectUtil.isVoid(adaptorCredential.getCredentialJson())){
-            adaptorCredential.setCredentialJson("{}");
+        if (!adaptorCredential.getRawRecord().isNewRecord()){
+            // User wants to use the adaptor.
+            if (ObjectUtil.isVoid(adaptorCredential.getCredentialJson())){
+                adaptorCredential.setCredentialJson("{}");
+            }
         }
-        return adaptorCredential.getCredentialJson();
+        return adaptorCredential.getCredentialJson(); //Null implies adaptor not enabled.
     }
 }
