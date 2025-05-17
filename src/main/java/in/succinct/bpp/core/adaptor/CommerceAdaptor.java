@@ -34,8 +34,10 @@ import org.json.simple.JSONObject;
 
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public abstract class CommerceAdaptor{
     private final Subscriber subscriber;
@@ -80,8 +82,15 @@ public abstract class CommerceAdaptor{
         return  user != null && !ObjectUtil.isVoid(user.getCredentialJson() );
     }
     protected boolean isUserCredentialsAvailable(in.succinct.bpp.core.db.model.User user){
-        return isAdaptorEnabled(user) &&
-                !((JSONObject) JSONAwareWrapper.parse(user.getCredentialJson())).isEmpty();
+        if (isAdaptorEnabled(user)){
+            JSONObject creds = JSONAwareWrapper.parse(user.getCredentialJson());
+            return !creds.isEmpty() && creds.keySet().containsAll(getCredentialAttributes());
+        }
+        return false;
+    }
+    
+    protected Set<String> getCredentialAttributes(){
+        return new HashSet<>();
     }
     
 
