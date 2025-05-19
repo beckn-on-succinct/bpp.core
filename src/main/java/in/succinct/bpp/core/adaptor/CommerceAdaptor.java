@@ -60,16 +60,18 @@ public abstract class CommerceAdaptor{
                     user = in.succinct.bpp.core.db.model.User.findProvider(token);
                 }
             }
+        }else {
+            JSONObject headers = request.getExtendedAttributes().get("headers");
+            if (headers.containsKey("USER.ID")) {
+                long userId = Long.parseLong((String) headers.get("USER.ID"));
+                user = Database.getTable(in.succinct.bpp.core.db.model.User.class).get(userId);
+            }
         }
         
         if (!isUserCredentialsAvailable(user)) {
             //Does user want to use this carrier.
             if (isAdaptorEnabled(user)) {
-                JSONObject headers = request.getExtendedAttributes().get("headers");
-                if (headers.containsKey("USER.ID")) {
-                    long userId = Long.parseLong((String) headers.get("USER.ID"));
-                    user = Database.getTable(in.succinct.bpp.core.db.model.User.class).get(userId);
-                }
+                user = Database.getTable(in.succinct.bpp.core.db.model.User.class).get(1); //User Default one against root
             }
         }
         if (!isUserCredentialsAvailable(user)){
