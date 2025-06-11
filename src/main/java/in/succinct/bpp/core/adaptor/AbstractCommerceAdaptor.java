@@ -140,15 +140,15 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
         Payments payments = new Payments();
         Payment payment = new Payment();
         payment.setId(BecknIdHelper.getBecknId("1",getSubscriber(), Entity.payment));
-        payment.setPaymentType(Payment.ON_ORDER);
+        payment.setInvoiceEvent(FulfillmentStatus.Created);
         payment.setCollectedBy(CollectedBy.BAP);
         payments.add(payment);
         if (getProviderConfig().isCodSupported()){
             int i = 2;
-            for (String paymentType : new String[]{Payment.ON_ORDER,Payment.POST_FULFILLMENT,Payment.PRE_FULFILLMENT,Payment.ON_FULFILLMENT}){
+            for (FulfillmentStatus invoiceEvent : new FulfillmentStatus[]{FulfillmentStatus.Created,FulfillmentStatus.Prepared, FulfillmentStatus.Completed}){
                 payment = new Payment();
                 payment.setId(BecknIdHelper.getBecknId(String.valueOf(i++),getSubscriber(), Entity.payment));
-                payment.setPaymentType(paymentType);
+                payment.setInvoiceEvent(invoiceEvent);
                 payment.setCollectedBy(CollectedBy.BPP);
                 payments.add(payment);
             }
