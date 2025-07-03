@@ -75,7 +75,7 @@ public interface BecknOrderMeta extends Model {
     public Date getFulfillmentStatusReachedAt(FulfillmentStatus status);
     public void setFulfillmentStatusReachedAt(FulfillmentStatus status, Date at);
 
-
+    @COLUMN_SIZE(1024)
     public String getTrackingUrl();
     public void setTrackingUrl(String trackingUrl);
 
