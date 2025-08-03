@@ -57,7 +57,8 @@ public abstract class CommerceAdaptor{
                 String token = fulfillmentStop.getAuthorization().getToken();
                 String type = fulfillmentStop.getAuthorization().getType();
                 if (ObjectUtil.equals(type, "customer")) {
-                    user = in.succinct.bpp.core.db.model.User.findProvider(token);
+                    String[] parts = token.split(":");
+                    user = in.succinct.bpp.core.db.model.User.findProvider(parts[0]);
                 }
             }
         }else {
@@ -68,28 +69,7 @@ public abstract class CommerceAdaptor{
             }
         }
         
-        if (!isUserCredentialsAvailable(user)) {
-            //Does user want to use this carrier.
-            if (isAdaptorEnabled(user)) {
-                user = Database.getTable(in.succinct.bpp.core.db.model.User.class).get(1); //User Default one against root
-            }
-        }
-        if (!isUserCredentialsAvailable(user)){
-            user = null;
-        }
         return user;
-    }
-    
-    protected boolean isAdaptorEnabled(in.succinct.bpp.core.db.model.User user){
-        return  user != null && !ObjectUtil.isVoid(user.getCredentialJson() );
-    }
-    protected boolean isUserCredentialsAvailable(in.succinct.bpp.core.db.model.User user){
-        if (isAdaptorEnabled(user)){
-            JSONObject creds = JSONAwareWrapper.parse(user.getCredentialJson());
-            
-            return !creds.isEmpty() && getCredentialAttributes().stream().noneMatch(attr -> ObjectUtil.isVoid(creds.get(attr)));
-        }
-        return false;
     }
     
     protected Set<String> getCredentialAttributes(){
