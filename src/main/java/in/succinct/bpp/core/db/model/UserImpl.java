@@ -21,22 +21,28 @@ public class UserImpl extends ModelImpl<User> {
     }
     public Map<String,String> getCredentials(boolean production, Set<String> attributes){
         User user = getProxy();
-        User parent = user.getId() > 1 ?  Database.getTable(User.class).get(1) : null;
+        User parent = user.getId() > 1 ?  Database.getTable(User.class).get(1) : null; // Rooot has no parent
         
         Map<String,String> finalCredentials = new HashMap<>();
         for (User u : new User[]{user,parent}){
             if (u == null){
-                continue;
+                break;
             }
-            AdaptorCredential.getUserCredentials(u,production,attributes).forEach((k,v)->{
-                finalCredentials.putIfAbsent(k,v);
+            Map<String,String> creds = AdaptorCredential.getUserCredentials(u,production,attributes);
+            if (creds == null){
+                //Adaptor is not enabled.
+                break;
+            }
+            creds.forEach((k, v) -> {
+                finalCredentials.putIfAbsent(k, v);
             });
         }
         return finalCredentials;
     }
     
     public boolean isSelfManaged(boolean production,Set<String> attributes){
-        return  !AdaptorCredential.getUserCredentials(getProxy(),production,attributes).isEmpty();
+        Map<String,String> creds = AdaptorCredential.getUserCredentials(getProxy(),production,attributes);
+        return (creds == null || !creds.isEmpty());
     }
     
 }

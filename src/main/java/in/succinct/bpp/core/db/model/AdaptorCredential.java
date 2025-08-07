@@ -41,7 +41,7 @@ public interface AdaptorCredential  extends Model {
     static Map<String,String> getUserCredentials(User u, boolean production, Set<String> attributes){
         String adaptorName = new StringTokenizer(Config.instance().getHostName(),".").nextToken();
         
-        Map<String,String> finalCredentials = new HashMap<>();
+        Map<String,String> finalCredentials;
         
         AdaptorCredential adaptorCredential = Database.getTable(AdaptorCredential.class).newRecord();
         adaptorCredential.setAdaptorName(adaptorName);
@@ -49,7 +49,8 @@ public interface AdaptorCredential  extends Model {
         adaptorCredential.setProduction(production);
         adaptorCredential = Database.getTable(AdaptorCredential.class).getRefreshed(adaptorCredential);
         if (!adaptorCredential.getRawRecord().isNewRecord()){
-            // User wants to use the adaptor.
+            // User wants to use the adaptor
+            finalCredentials = new HashMap<>();
             if (ObjectUtil.isVoid(adaptorCredential.getCredentialJson())){
                 adaptorCredential.setCredentialJson("{}");
             }
@@ -61,6 +62,8 @@ public interface AdaptorCredential  extends Model {
                     }
                 }
             });
+        }else {
+            finalCredentials = null;
         }
         return finalCredentials;
     }
