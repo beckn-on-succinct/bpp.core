@@ -7,6 +7,7 @@ import com.venky.swf.db.annotations.column.COLUMN_DEF;
 import com.venky.swf.db.annotations.column.IS_NULLABLE;
 import com.venky.swf.db.annotations.column.UNIQUE_KEY;
 import com.venky.swf.db.annotations.column.defaulting.StandardDefault;
+import com.venky.swf.db.annotations.column.pm.PARTICIPANT;
 import com.venky.swf.db.model.Model;
 import com.venky.swf.routing.Config;
 import in.succinct.json.JSONAwareWrapper;
@@ -21,6 +22,7 @@ import java.util.StringTokenizer;
 public interface AdaptorCredential  extends Model {
     @UNIQUE_KEY
     @IS_NULLABLE(false)
+    @PARTICIPANT
     Long getUserId();
     void setUserId(Long id);
     User getUser();
