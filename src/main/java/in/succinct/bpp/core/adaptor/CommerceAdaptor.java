@@ -18,7 +18,9 @@ import in.succinct.beckn.FulfillmentStop;
 import in.succinct.beckn.Intent;
 import in.succinct.beckn.Message;
 import in.succinct.beckn.Option;
+import in.succinct.beckn.Order;
 import in.succinct.beckn.Organization;
+import in.succinct.beckn.Provider;
 import in.succinct.beckn.RatingCategories;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.ReturnReasons;
@@ -47,29 +49,33 @@ public abstract class CommerceAdaptor{
     private final IssueTracker issueTracker;
     private final RatingCollector ratingCollector;
     
-    protected in.succinct.bpp.core.db.model.User getUser(Request request) {
+    public in.succinct.bpp.core.db.model.User getUser(Request request){
         String action = request.getContext().getAction();
-        in.succinct.bpp.core.db.model.User user = null;
-        if (ObjectUtil.equals(action, "search")) {
+        if (ObjectUtil.equals(action,"search" )){
             Intent intent = request.getMessage().getIntent();
-            FulfillmentStop fulfillmentStop = intent.getFulfillment()._getStart();
-            if (fulfillmentStop != null) {
+            FulfillmentStop fulfillmentStop  = intent.getFulfillment()._getStart();
+            if (fulfillmentStop != null){
                 String token = fulfillmentStop.getAuthorization().getToken();
                 String type = fulfillmentStop.getAuthorization().getType();
-                if (ObjectUtil.equals(type, "customer")) {
-                    String[] parts = token.split(":");
-                    user = in.succinct.bpp.core.db.model.User.findProvider(parts[0]);
+                if (ObjectUtil.equals(type,"customer")){
+                    return in.succinct.bpp.core.db.model.User.findProvider(token);
                 }
             }
-        }else {
-            JSONObject headers = request.getExtendedAttributes().get("headers");
-            if (headers.containsKey("USER.ID")) {
-                long userId = Long.parseLong((String) headers.get("USER.ID"));
-                user = Database.getTable(in.succinct.bpp.core.db.model.User.class).get(userId);
+        }else if (Subscriber.BAP_ACTION_SET.contains(action)){
+            in.succinct.beckn.Message becknMessage = request.getMessage();
+            Order order = becknMessage == null ? null : becknMessage.getOrder();
+            Provider provider = order == null ? null : order.getProvider();
+            String providerId = provider == null ? null : provider.getId();
+            if (!ObjectUtil.isVoid(providerId)){
+                return in.succinct.bpp.core.db.model.User.findProvider(providerId);
             }
         }
-        
-        return user;
+        JSONObject headers = request.getExtendedAttributes().get("headers");
+        if (headers.containsKey("USER.ID")) {
+            long userId = Long.parseLong((String) headers.get("USER.ID"));
+            return Database.getTable(in.succinct.bpp.core.db.model.User.class).get(userId);
+        }
+        return null;
     }
     
     protected Set<String> getCredentialAttributes(){
@@ -196,9 +202,11 @@ public abstract class CommerceAdaptor{
 
     public void get_feedback_form(Request request, Request reply) {
     }
-
-
+    
     public void _search(Request reply){
+        _search(null,reply);
+    }
+    public void _search(String providerId, Request reply){
 
     }
     public void clearCache() {

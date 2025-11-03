@@ -108,8 +108,8 @@ public abstract class NetworkApiAdaptor extends in.succinct.onet.core.adaptor.Ne
     }
 
     //Called from search adaptor installer to cache the complete catalog!
-    public void _search(CommerceAdaptor adaptor, Request reply) {
-        adaptor._search(reply);
+    public void _search(CommerceAdaptor adaptor, String providerId,Request reply) {
+        adaptor._search(providerId,reply);
     }
     protected final TypeConverter<Double> doubleTypeConverter = Database.getJdbcTypeHelper("").getTypeRef(double.class).getTypeConverter();
     protected final TypeConverter<Boolean> booleanTypeConverter  = Database.getJdbcTypeHelper("").getTypeRef(boolean.class).getTypeConverter();

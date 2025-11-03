@@ -4,6 +4,7 @@ import com.venky.core.string.StringUtil;
 import com.venky.core.util.ObjectUtil;
 import com.venky.swf.db.Database;
 import com.venky.swf.db.annotations.column.COLUMN_DEF;
+import com.venky.swf.db.annotations.column.COLUMN_SIZE;
 import com.venky.swf.db.annotations.column.IS_NULLABLE;
 import com.venky.swf.db.annotations.column.UNIQUE_KEY;
 import com.venky.swf.db.annotations.column.defaulting.StandardDefault;
@@ -35,7 +36,7 @@ public interface AdaptorCredential  extends Model {
     @UNIQUE_KEY
     String getAdaptorName();
     void setAdaptorName(String adaptorName);
-    
+    @COLUMN_SIZE(4096)
     String getCredentialJson();
     void setCredentialJson(String credentialJson);
     
