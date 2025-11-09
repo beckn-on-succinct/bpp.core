@@ -61,7 +61,7 @@ public abstract class CommerceAdaptor{
                     return in.succinct.bpp.core.db.model.User.findProvider(token);
                 }
             }
-        }else if (Subscriber.BAP_ACTION_SET.contains(action)){
+        }else if (Subscriber.BPP_ACTION_SET.contains(action)){
             in.succinct.beckn.Message becknMessage = request.getMessage();
             Order order = becknMessage == null ? null : becknMessage.getOrder();
             Provider provider = order == null ? null : order.getProvider();
