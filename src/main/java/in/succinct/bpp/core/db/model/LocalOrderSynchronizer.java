@@ -299,9 +299,6 @@ public class LocalOrderSynchronizer {
                         }
                     }
                     fixFulfillment(request.getContext(), order);
-                    if (order.getProviderLocation() == null){
-                        order.setProviderLocation(lastKnown.getProviderLocation());
-                    }
                     if (order.getProvider() == null){
                         order.setProvider(lastKnown.getProvider());
                     }
@@ -408,13 +405,10 @@ public class LocalOrderSynchronizer {
             locations = new Locations();
             order.getProvider().setLocations(locations);
         }
-        if (order.getProviderLocation() != null) {
-            if (locations.get(order.getProviderLocation().getId()) == null) {
-                locations.add(order.getProviderLocation());
+        if (order._getProviderLocation() != null) {
+            if (locations.get(order._getProviderLocation().getId()) == null) {
+                locations.add(order._getProviderLocation());
             }
-        }
-        if (locations.size() == 1) {
-            order.setProviderLocation(locations.get(0));
         }
     }
 
@@ -610,7 +604,7 @@ public class LocalOrderSynchronizer {
         }
         if (DoubleUtils.compareTo(unpaidAmount.doubleValue() ,0.0) == 0){
             for (Payment payment : order.getPayments()) {
-                if (!payment.getStatus().isPaid()) {
+                if (payment.getStatus()== null || !payment.getStatus().isPaid()) {
                     payment.setStatus(PaymentStatus.PAID);
                 }
             }

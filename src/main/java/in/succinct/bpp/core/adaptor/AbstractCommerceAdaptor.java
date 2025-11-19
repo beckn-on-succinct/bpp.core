@@ -201,18 +201,15 @@ public abstract class AbstractCommerceAdaptor extends CommerceAdaptor implements
             locations = new Locations();
             order.getProvider().setLocations(locations);
         }
-        if (order.getProviderLocation() != null){
-            if (locations.get(order.getProviderLocation().getId()) == null){
-                locations.add(order.getProviderLocation());
+        if (order._getProviderLocation() != null){
+            if (locations.get(order._getProviderLocation().getId()) == null){
+                locations.add(order._getProviderLocation());
             }
         }
         for (Location location : locations){
             Location actualLocation = allLocations.get(location.getId());
             location.rm("id");
             location.update(actualLocation);
-        }
-        if (locations.size() == 1 ){
-            order.setProviderLocation(locations.get(0));
         }
     }
 
