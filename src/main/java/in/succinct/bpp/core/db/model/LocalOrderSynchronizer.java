@@ -336,7 +336,7 @@ public class LocalOrderSynchronizer {
                         }
                     }else {
                         if (ObjectUtil.isVoid(meta.getECommerceOrderId()) && ObjectUtil.equals(action,"on_confirm")){
-                            meta.setECommerceOrderId(order.getId());
+                            //meta.setECommerceOrderId(order.getId());
                             meta.setBapOrderId(order.getId());
                         }
                     }
