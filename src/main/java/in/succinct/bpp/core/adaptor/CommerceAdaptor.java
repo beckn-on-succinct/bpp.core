@@ -58,7 +58,8 @@ public abstract class CommerceAdaptor{
                 String token = fulfillmentStop.getAuthorization().getToken();
                 String type = fulfillmentStop.getAuthorization().getType();
                 if (ObjectUtil.equals(type,"customer")){
-                    return in.succinct.bpp.core.db.model.User.findProvider(token);
+                    String[] parts = token.split(":");
+                    return in.succinct.bpp.core.db.model.User.findProvider(parts[0]);
                 }
             }
         }else if (Subscriber.BPP_ACTION_SET.contains(action)){
