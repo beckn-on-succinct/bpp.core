@@ -512,7 +512,9 @@ public class LocalOrderSynchronizer {
             }
             fulfillmentStatusBucketMap.get(fulfillmentStatus).increment();
             if (fulfillmentStatus.isOpen() && !order.getStatus().isOpen()) {
-                order.setStatus(Status.Created); //Reset.
+                if (RetailFulfillmentType.valueOf(fulfillment.getType()) != RetailFulfillmentType.return_to_origin){
+                    fulfillment.setFulfillmentStatus(FulfillmentStatus.Cancelled);
+                }
             }
         }
         
