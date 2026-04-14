@@ -26,6 +26,9 @@ public interface BecknOrderMeta extends Model {
 
     public String getNetworkId();
     public void setNetworkId(String networkId);
+    
+    String getProviderId();
+    void setProviderId(String providerId);
 
 
 

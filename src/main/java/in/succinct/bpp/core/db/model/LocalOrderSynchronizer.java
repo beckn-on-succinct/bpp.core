@@ -198,6 +198,7 @@ public class LocalOrderSynchronizer {
     private void sync(BecknOrderMeta meta, Order order){
         updateOrderStatus(order);
         meta.setOrderJson(order.getInner().toString());
+        meta.setProviderId(order.getProvider().getId());
     }
 
     private Order getLastKnownOrder(BecknOrderMeta meta) {
@@ -523,7 +524,7 @@ public class LocalOrderSynchronizer {
                 order.setStatus(Status.Awaiting_Acceptance);
             }
         } else if (fulfillmentStatusBucketMap.get(FulfillmentStatus.Preparing).intValue() > 0) {
-            if (order.getStatus().ordinal() < Status.Accepted.ordinal()) {
+             if (order.getStatus().ordinal() < Status.Accepted.ordinal()) {
                 order.setStatus(Status.Accepted);
             }
         } else if (fulfillmentStatusBucketMap.get(FulfillmentStatus.Prepared).intValue() > 0) {
