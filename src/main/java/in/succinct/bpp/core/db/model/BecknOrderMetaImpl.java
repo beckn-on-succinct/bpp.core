@@ -119,13 +119,13 @@ public class BecknOrderMetaImpl extends ModelImpl<BecknOrderMeta> {
         FulfillmentStops stops = becknOrder.getFulfillment().getFulfillmentStops();
         if (stops.size() > 1){
             FulfillmentStop stop = stops.get(stops.size()-1);
-            order.setCustomerAddress(stop.getLocation().get("address"));
+            order.setCustomerAddress(stop.getLocation().getAddress().flatten());
             order.setCity(stop.getLocation().getCity().getName());
             order.setPinCode(stop.getLocation().getPinCode());
             order.setPhoneNumber(stop.getContact() == null ? null : stop.getContact().getPhone());
             
         }else if (becknOrder.getBilling() != null){
-            order.setCustomerAddress(becknOrder.getBilling().get("address"));
+            order.setCustomerAddress(becknOrder.getBilling().getAddress().flatten());
             order.setCity(becknOrder.getBilling().getCity().getName());
             order.setPinCode(becknOrder.getBilling().getPinCode());
             order.setPhoneNumber(becknOrder.getBilling().getPhone());
